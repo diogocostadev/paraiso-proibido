@@ -1,8 +1,41 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Paraiso Proibido";
+    var videosHome = ViewData["VideosHome"] as VideosHome;
+    var videosPagina = videosHome.videos;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container">
+    <div class="videos">
+        @if (videosPagina.Any())
+        {
+            foreach (var video in videosPagina)
+            {
+                <div class="video-item">
+                    <img src="@video.video.default_thumb" alt="@video.video.title" class="video-thumb" 
+                         data-thumbs="@string.Join(",", video.video.thumbs.Select(t => t.src))" />
+                    <p>@video.video.title</p>
+                </div>
+            }
+        }
+    </div>
 </div>
+
+<script>
+    document.querySelectorAll('.video-thumb').forEach(function(thumb) {
+        const thumbsArray = thumb.getAttribute('data-thumbs').split(',');
+        let index = 0;
+        let interval;
+
+        thumb.addEventListener('mouseenter', function() {
+            interval = setInterval(function() {
+                thumb.src = thumbsArray[index];
+                index = (index + 1) % thumbsArray.length;
+            }, 1000);
+        });
+
+        thumb.addEventListener('mouseleave', function() {
+            clearInterval(interval);
+            thumb.src = thumbsArray[0];
+        });
+    });
+</script>
