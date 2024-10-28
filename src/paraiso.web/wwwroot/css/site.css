@@ -25,6 +25,7 @@ header {
   display: flex;
   align-items: center;
   width: 100%;
+  justify-content: space-between;
 }
 
 .logo {
@@ -33,14 +34,14 @@ header {
 }
 
 .search-container {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .search-bar {
   width: 100%;
-  max-width: 400px;
+  max-width: 300px;
   padding: 0.75rem;
   font-size: 1rem;
   border-radius: 5px;
@@ -49,7 +50,7 @@ header {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 2rem;
   flex: 1;
@@ -59,7 +60,7 @@ header {
   background-color: #444;
   overflow: visible;
   padding: 1rem;
-  z-index: 20;
+  z-index: 100;
   position: relative;
 }
 
@@ -91,7 +92,7 @@ header {
 .dropdown {
   position: relative;
   display: inline-block;
-  z-index: 25;
+  z-index: 150;
 }
 
 .dropbtn {
@@ -104,7 +105,7 @@ header {
   background-color: #2a2a2a;
   min-width: 160px;
   box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-  z-index: 30;
+  z-index: 200;
 }
 
 .dropdown-content a {
@@ -136,13 +137,14 @@ header {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+  justify-content: space-between;
 }
 
 .video-item {
   background-color: #2a2a2a;
   border-radius: 8px;
   overflow: hidden;
-  width: calc(25% - 1rem);
+  width: calc(16.66% - 1rem);
   position: relative;
   transition: transform 0.3s;
 }
@@ -167,5 +169,23 @@ header {
 @media (min-width: 768px) {
   html {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .video-item {
+    width: calc(25% - 1rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .video-item {
+    width: calc(33.33% - 1rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .video-item {
+    width: calc(50% - 1rem);
   }
 }

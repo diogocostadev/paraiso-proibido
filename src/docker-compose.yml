@@ -1,0 +1,12 @@
+﻿services:
+  robophub:
+    image: robophub
+    build:
+      context: .
+      dockerfile: RoboPhub/Dockerfile
+
+  consumidorrobophub:
+    image: consumidorrobophub
+    build:
+      context: .
+      dockerfile: ConsumidorRoboPhub/Dockerfile

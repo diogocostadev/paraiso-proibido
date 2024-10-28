@@ -30,7 +30,11 @@ public class HomeController : Controller
             ViewData["Categorias"] = categorias;
         }
         
-        var videosResponse = await _httpClient.GetAsync("https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=medium");
+//        var videosResponse = await _httpClient.GetAsync("https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=medium");
+        var videosResponse = await _httpClient
+            .GetAsync("https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=medium");
+         
+        
         if (videosResponse.IsSuccessStatusCode)
         {
             ViewData["VideosHome"] = await videosResponse.Content.ReadFromJsonAsync<VideosHome>();
