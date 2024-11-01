@@ -1,8 +1,18 @@
+using paraiso.web.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Adiciona o Distributed Cache (usando Redis, por exemplo)
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = "109.199.118.135:6379,abortConnect=false,ssl=false";
+    options.InstanceName = "RedisCacheInstance";
+});
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
+
+
+builder.Services.AddSingleton<ServicoVideosCache>();
 
 var app = builder.Build();
 

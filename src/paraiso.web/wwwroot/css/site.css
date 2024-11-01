@@ -189,3 +189,83 @@ header {
     width: calc(50% - 1rem);
   }
 }
+
+.pagination1 {
+  display: flex;
+  justify-content: center; /* Centraliza os itens horizontalmente */
+  align-items: center;     /* Centraliza os itens verticalmente   
+ */
+  gap: 1rem;              /* Espaçamento entre os links */
+  margin: 1rem auto;      /* Margem superior/inferior de 1rem e centraliza horizontalmente */
+  padding: 1rem;           /* Adiciona padding interno */
+  background-color: #f5f5f5; /* Cor de fundo clara */
+  border-radius: 5px;      /* Cantos arredondados */
+}
+
+.pagination1 a {
+  display: inline-block;  /* Torna os links como blocos inline */
+  padding: 0.5rem 1rem;   /* Padding nos links */
+  background-color: #333; /* Cor de fundo escura para os links */
+  color: #fff;            /* Cor do texto branca */
+  text-decoration: none;  /* Remove a decoração do link */
+  border-radius: 3px;      /* Cantos arredondados nos links */
+  transition: all 0.3s ease; /* Adiciona uma transição suave */
+}
+
+.pagination1 a:hover {
+  background-color: #1b6ec2; /* Cor de fundo azul ao passar o mouse */
+}
+
+.pagination1 a.active {
+  background-color: #1b6ec2; /* Cor de fundo azul para a página atual */
+  color: ;            /* Cor do texto branca para a página atual */
+  pointer-events: none;    /* Impede que o link da página atual seja clicado */
+}
+
+.pagination2 {
+  display: flex;
+  justify-content: center; /* Centraliza os itens horizontalmente */
+  align-items: center;     /* Centraliza os itens verticalmente */
+  gap: 2;                 /* Espaçamento entre os links (respeitando o gap-2 do HTML) */
+  margin: 0 auto;         /* Centraliza horizontalmente */
+  mt-8;                   /* Margem top de 8 (respeitando o mt-8 do HTML) */
+}
+
+/* Estilos para todos os links da paginação */
+.pagination2 a {
+  px-4;                  /* Padding horizontal de 4 (respeitando o px-4 do HTML) */
+  py-2;                  /* Padding vertical de 2 (respeitando o py-2 do HTML) */
+  border-radius: 5px;      /* Cantos arredondados */
+  text-decoration: none;  /* Remove a decoração do link */
+  transition: all 0.3s ease; /* Adiciona uma transição suave */
+}
+
+/* Estilos para os links "Anterior" e "Próxima" */
+.pagination2 a:first-child,
+.pagination2 a:last-child {
+  background-color: #2563eb; /* Cor de fundo azul (equivalente ao bg-blue-500) */
+  color: #fff;            /* Cor do texto branca */
+}
+
+.pagination2 a:first-child:hover,
+.pagination2 a:last-child:hover {
+  background-color: #1d4ed8; /* Cor de fundo azul escuro ao passar o mouse (equivalente ao hover:bg-blue-600) */
+}
+
+/* Estilos para os links numéricos */
+.pagination2 a:not(:first-child):not(:last-child) {
+  background-color: #e5e7eb; /* Cor de fundo cinza claro (equivalente ao bg-gray-200) */
+  color: #000;            /* Cor do texto preta */
+}
+
+.pagination2 a:not(:first-child):not(:last-child):hover {
+  background-color: #2563eb; /* Cor de fundo azul ao passar o mouse (equivalente ao hover:bg-blue-500) */
+  color: #fff;            /* Cor do texto branca */
+}
+
+/* Estilos para o link da página atual */
+.pagination2 a.bg-blue-600 {
+  background-color: #1d4ed8; /* Cor de fundo azul escuro (equivalente ao bg-blue-600) */
+  color: #fff;            /* Cor do texto branca */
+  pointer-events: none;    /* Impede que o link da página atual seja clicado */
+}
