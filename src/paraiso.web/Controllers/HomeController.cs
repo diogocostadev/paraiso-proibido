@@ -50,6 +50,42 @@ public class HomeController : Controller
         }
     }
     
+    public async Task<IActionResult> V(string id, int p)
+    {
+        var resultado = await _servicoVideos.ObterVideoPorIdAsync(id, p);
+        return View(resultado);
+    }
+
+    public async Task<IActionResult> TermoDeUso()
+    {
+        return View();
+    }
+    
+    public async Task<IActionResult> PoliticaDePrivacidade()
+    {
+        return View();
+    }
+    
+    public async Task<IActionResult> AvisoConteudoSensivel()
+    {
+        return View();
+    }
+    
+    public async Task<IActionResult> PoliticaDeCookie()
+    {
+        return View();
+    }
+    
+    public async Task<IActionResult> RemocaoDeVideo()
+    {
+        return View();
+    }
+
+    public async Task<IActionResult> TermoDeConsentimento()
+    {
+        return View();
+    }
+    
     public async Task<IActionResult> DetalhesEstrelas()
     {
         // Buscar detalhes das estrelas na API e enviar para a view

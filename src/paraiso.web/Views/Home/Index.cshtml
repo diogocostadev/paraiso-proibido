@@ -15,9 +15,13 @@
                     @* <img src="@video.video.default_thumb" alt="@video.video.title" class="video-thumb" *@
                     @*      data-thumbs="@string.Join(",", video.video.thumbs.Select(t => t.src))"/> *@
                     
-                    <img src="@video.DefaultThumbSrc" alt="@video.Titulo" class="video-thumb" />
-
-                    <p>@video.Titulo</p>
+                    <a asp-action="V" 
+                       asp-route-id="@video.Id"
+                       asp-route-p="@Model.PaginaAtual"
+                       >
+                        <img src="@video.DefaultThumbSrc" alt="@video.Titulo" class="video-thumb" />
+                        <p>@video.Titulo</p>
+                    </a>
                 </div>
             }
         }

@@ -55,6 +55,73 @@ public class ServicoVideosCache
         IniciarCacheWarming();
     }
 
+    public async Task<VideoBase> ObterVideoPorIdAsync(string id, int page)
+    {
+        try
+        {
+            string chaveCache = $"videos_pagina_{page}_100";
+            var dadosCache = await _cache.GetAsync(chaveCache);
+
+            if (dadosCache != null)
+            {
+                var dadosDescomprimidos = _usarCompressao
+                    ? DescomprimirDados(dadosCache)
+                    : dadosCache;
+
+                var paginaCache = JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(
+                    Encoding.UTF8.GetString(dadosDescomprimidos));
+
+                var videoEncontrado = paginaCache.Itens.FirstOrDefault(v => v.Id == id);
+                if (videoEncontrado != null)
+                {
+                    return videoEncontrado;
+                }
+            }
+
+                // Se não encontrou no cache, busca diretamente no banco
+            return await _circuitBreaker.ExecuteAsync(async () =>
+            {
+                using var conexao = new NpgsqlConnection(_stringConexao);
+                await conexao.OpenAsync();
+
+                var consulta = @"
+                SELECT id, titulo, duracao_segundos, embed, default_thumb_size, default_thumb_src 
+                FROM dev.videos 
+                WHERE id = @Id";
+
+                using var comando = new NpgsqlCommand(consulta, conexao);
+                comando.Parameters.AddWithValue("@Id", id);
+
+                using var leitor = await comando.ExecuteReaderAsync();
+                if (await leitor.ReadAsync())
+                {
+                    var video = new VideoBase
+                    {
+                        Id = leitor.GetString(0),
+                        Titulo = leitor.GetString(1),
+                        DuracaoSegundos = leitor.GetInt32(2),
+                        Embed = leitor.GetString(3),
+                        DefaultThumbSize = leitor.GetString(4),
+                        DefaultThumbSrc = leitor.GetString(5)
+                    };
+
+                    // Armazena o resultado individual em cache
+                    string chaveVideoIndividual = $"video_{id}";
+                    await ArmazenarEmCache(chaveVideoIndividual, video);
+
+                    return video;
+                }
+
+                return null; // Retorna null se não encontrar o vídeo
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Erro ao obter vídeo por ID: {id}");
+            throw;
+        }
+    }
+
     private void IniciarCacheWarming()
     {
         _cacheWarmingTimer = new Timer(
