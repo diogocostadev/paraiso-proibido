@@ -664,3 +664,93 @@ button:hover {
 .remocao-video button:hover {
   background-color: #e04c4c;
 }
+
+
+
+.age-modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.95);
+  overflow: auto;
+}
+
+.age-modal-content {
+  background-color: #1a1a1a;
+  margin: 5% auto;
+  padding: 30px;
+  max-width: 600px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.age-modal-content h2 {
+  color: #fff;
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.age-modal-content p {
+  color: #ccc;
+  margin-bottom: 15px;
+  line-height: 1.6;
+}
+
+.age-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin: 30px 0;
+}
+
+.enter-button {
+  background-color: #e44242;
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%;
+  max-width: 400px;
+  transition: background-color 0.3s;
+}
+
+.enter-button:hover {
+  background-color: #c53232;
+}
+
+.leave-link {
+  color: #888;
+  text-decoration: none;
+}
+
+.leave-link:hover {
+  text-decoration: underline;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.protect-link {
+  color: #888;
+  text-decoration: none;
+}
+
+.protect-link:hover {
+  text-decoration: underline;
+}
+
+.rta-logo {
+  height: 30px;
+}

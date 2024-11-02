@@ -11,6 +11,7 @@
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
+      <Content Remove="Extencao\**" />
     </ItemGroup>
 
     <ItemGroup>
@@ -18,6 +19,19 @@
       <PackageReference Include="Npgsql" Version="8.0.5" />
       <PackageReference Include="Polly" Version="8.4.2" />
       <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Extencao\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="Extencao\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Extencao\**" />
+      <None Remove="Views\Home\V.cshtml.css" />
     </ItemGroup>
 
 </Project>

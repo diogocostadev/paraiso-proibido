@@ -6,6 +6,7 @@
         <title>@ViewData["Title"] - paraiso.web</title>
         <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
+        
     </head>
     <body>
 
@@ -48,6 +49,30 @@
         &copy; 2024 - paraiso.web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
     </footer>
 
+    <div id="ageVerificationModal" class="age-modal">
+        <div class="age-modal-content">
+            <h2>Paraiso Proibido é um website apenas para adultos!</h2>
+            <p>O conteúdo disponível pode conter materiais pornográficos.</p>
+
+            <p>Paraiso Proibido é estritamente limitado a pessoas com mais de 18 anos ou com idade legal em sua jurisdição, o que for maior.</p>
+
+            <p>Um de nossos principais objetivos é ajudar os pais a restringir o acesso ao site para menores, então garantimos que o Paraiso Proibido é e permanece totalmente em conformidade com o código RTA (Restricted to Adults). Isso significa que todo acesso ao site pode ser bloqueado por ferramentas simples de controle parental.</p>
+
+            <p>Qualquer pessoa com um menor em sua residência ou sob sua supervisão deve implementar proteções básicas de controle parental, incluindo configurações de hardware do computador, instalação de software ou serviços de filtragem de ISP, para bloquear seus menores de acessarem conteúdo inadequado.</p>
+
+            <div class="age-buttons">
+                <button id="enterSite" class="enter-button">Tenho 18 anos ou mais — entrar no site</button>
+                <a href="https://www.google.com" class="leave-link">Sair</a>
+            </div>
+
+            <div class="footer-links">
+                <a href="/como-proteger-menores" class="protect-link">como proteger menores</a>
+                <img src="/rta-logo.png" alt="RTA Logo" class="rta-logo" />
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/js/mais18.js"></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

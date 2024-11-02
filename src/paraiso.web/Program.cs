@@ -1,3 +1,4 @@
+using paraiso.web.Middleware;
 using paraiso.web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,7 +11,6 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
-
 
 builder.Services.AddSingleton<ServicoVideosCache>();
 
@@ -36,5 +36,8 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+
+app.UseMiddleware<VerificaMais18>();
 
 app.Run();
