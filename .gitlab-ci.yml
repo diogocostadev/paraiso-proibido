@@ -19,7 +19,7 @@ checagem-sonar:
       - cd src/paraiso.web/
       - ls
       - dotnet sonarscanner begin /k:"paraiso-proibido_web-front_AZL5iGpgOlKdynBn1dsH" /d:sonar.host.url=$SONAR_HOST_URL  /d:sonar.token=$SONAR_TOKEN
-      - dotnet build paraiso.web.sln
+      - dotnet build paraiso.web.csproj
       - dotnet sonarscanner end /d:sonar.token=$SONAR_TOKEN
 
   allow_failure: true
