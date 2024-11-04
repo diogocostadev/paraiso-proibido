@@ -10,3 +10,9 @@
     build:
       context: .
       dockerfile: ConsumidorRoboPhub/Dockerfile
+
+  paraiso.web:
+    image: paraiso.web
+    build:
+      context: .
+      dockerfile: paraiso.web/Dockerfile

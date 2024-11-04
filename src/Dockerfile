@@ -1,22 +1,23 @@
-﻿FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER $APP_UID
 WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["RoboPhub/RoboPhub.csproj", "RoboPhub/"]
-COPY ["paraiso.models/paraiso.models.csproj", "paraiso.models/"]
-RUN dotnet restore "RoboPhub/RoboPhub.csproj"
+COPY ["paraiso.web/paraiso.web.csproj", "paraiso.web/"]
+RUN dotnet restore "paraiso.web/paraiso.web.csproj"
 COPY . .
-WORKDIR "/src/RoboPhub"
-RUN dotnet build "RoboPhub.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/paraiso.web"
+RUN dotnet build "paraiso.web.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "RoboPhub.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "paraiso.web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "RoboPhub.dll"]
+ENTRYPOINT ["dotnet", "paraiso.web.dll"]

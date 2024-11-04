@@ -122,6 +122,8 @@ public class ServicoVideosCache
         }
     }
 
+    #region "--=[Métodos para deixar dados em cache]=--"
+    
     private void IniciarCacheWarming()
     {
         _cacheWarmingTimer = new Timer(
@@ -186,6 +188,9 @@ public class ServicoVideosCache
         }
         return outputStream.ToArray();
     }
+    
+    #endregion
+    
     public async Task<ResultadoPaginado<VideoBase>> ObterVideosAsync(int pagina = 1, int tamanhoPagina = 100)
     {
         string chaveCache = $"videos_pagina_{pagina}_{tamanhoPagina}";
