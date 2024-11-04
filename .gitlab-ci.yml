@@ -6,7 +6,7 @@ stages:
 
 checagem-sonar:
   stage: passar-sonar
-  tags: ["alemanha-5-paraiso"]
+  #tags: ["alemanha-5-paraiso"]
   image: mcr.microsoft.com/dotnet/sdk:8.0
   variables:
     SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  
