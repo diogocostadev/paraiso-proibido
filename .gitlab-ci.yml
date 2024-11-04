@@ -17,6 +17,7 @@ checagem-sonar:
       - .sonar/cache
   script:
       - cd src/paraiso.web/
+      - ls
       - dotnet sonarscanner begin /k:"paraiso-proibido_web-front_AZL5iGpgOlKdynBn1dsH" /d:sonar.host.url=$SONAR_HOST_URL  /d:sonar.token=$SONAR_TOKEN
       - dotnet build paraiso.web.sln
       - dotnet sonarscanner end /d:sonar.token=$SONAR_TOKEN
