@@ -1,53 +1,122 @@
-# This file is a template, and might need editing before it works on your project.
-# This is a sample GitLab CI/CD configuration file that should run without any modifications.
-# It demonstrates a basic 3 stage CI/CD pipeline. Instead of real tests or scripts,
-# it uses echo commands to simulate the pipeline execution.
-#
-# A pipeline is composed of independent jobs that run scripts, grouped into stages.
-# Stages run in sequential order, but jobs within stages run in parallel.
-#
-# For more information, see: https://docs.gitlab.com/ee/ci/yaml/index.html#stages
-#
-# You can copy and paste this template into a new `.gitlab-ci.yml` file.
-# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
-#
-# To contribute improvements to CI/CD templates, please follow the Development guide at:
-# https://docs.gitlab.com/ee/development/cicd/templates.html
-# This specific template is located at:
-# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
-
-stages:          # List of stages for jobs, and their order of execution
-  - build
-  - test
+stages:     
+  - passar-sonar     
+  - gerar-docker
   - deploy
 
-build-job:       # This job runs in the build stage, which runs first.
-  stage: build
-  tags: ["alemanha-5-paraiso"]
-  script:
-    - echo "Compiling the code..."
-    - echo "Compile complete."
 
-unit-test-job:   # This job runs in the test stage.
-  stage: test    # It only starts when the job in the build stage completes successfully.
+checagem-sonar:
+  stage: passar-sonar
   tags: ["alemanha-5-paraiso"]
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  
+    GIT_DEPTH: "0"  
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
   script:
-    - echo "Running unit tests... This will take about 60 seconds."
-    - sleep 60
-    - echo "Code coverage is 90%"
+      - cd src/paraiso.web/
+      - dotnet sonarscanner begin /k:"paraiso-proibido_web-front_AZL5iGpgOlKdynBn1dsH" /d:sonar.host.url=$SONAR_HOST_URL  /d:sonar.token=$SONAR_TOKEN
+      - dotnet build paraiso.web.sln
+      - dotnet sonarscanner end /d:sonar.token=$SONAR_TOKEN
 
-lint-test-job:   # This job also runs in the test stage.
-  stage: test    # It can run at the same time as unit-test-job (in parallel).
-  tags: ["alemanha-5-paraiso"]
-  script:
-    - echo "Linting code... This will take about 10 seconds."
-    - sleep 10
-    - echo "No lint issues found."
+  allow_failure: true
+  only:
+    - merge_requests
+    - dev
 
-deploy-job:      # This job runs in the deploy stage.
-  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
+gerar-imagem:
+  stage: gerar-docker
   tags: ["alemanha-5-paraiso"]
-  environment: production
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo 'Iniciando o build'
   script:
-    - echo "Deploying application..."
-    - echo "Application successfully deployed."
+    
+    - |
+      if [[ "$CI_COMMIT_TAG" =~ ^dev- ]]; then
+        ASPNETCORE_ENVIRONMENT="Development"
+        PORT="55910"
+        ENVIRONMENT_NAME="dev"
+        CONTAINER_NAME="paraiso-web-dev"
+      elif [[ "$CI_COMMIT_TAG" =~ ^prod- ]]; then
+        ASPNETCORE_ENVIRONMENT="Production"
+        PORT="55921"
+        ENVIRONMENT_NAME="prod"
+        CONTAINER_NAME="paraiso-web-dev"
+      else
+        echo "Tag não suportada para deploy."
+        exit 1
+      fi
+
+    - ls
+    - cd src
+    - docker login -u $USUARIO_DOCKER -p $SENHA_DOCKER $SERVIDOR_DOCKER
+    - docker build -t $CONTAINER_NAME:$CI_COMMIT_TAG .
+    - docker tag $CONTAINER_NAME:$CI_COMMIT_TAG $SERVIDOR_DOCKER/$CONTAINER_NAME:$CI_COMMIT_TAG
+    - docker push $SERVIDOR_DOCKER/$CONTAINER_NAME:$CI_COMMIT_TAG
+
+  after_script:
+    - echo 'Build e Imagem Finalizados'
+  retry:
+    max: 2 
+    when: always 
+  only:
+    - tags
+
+colocar-no-ar:
+  stage: deploy
+  tags: ["alemanha-5-paraiso"]
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo 'Atualizando o servidor'
+  script:
+    - docker login -u $USUARIO_DOCKER -p $SENHA_DOCKER $SERVIDOR_DOCKER
+    # Extraímos a versão removendo o prefixo dev- ou prod-
+    - TAG_VERSION=$CI_COMMIT_TAG
+    - echo $TAG_VERSION
+    
+    - |
+      if [[ "$CI_COMMIT_TAG" =~ ^dev- ]]; then
+        ASPNETCORE_ENVIRONMENT="Development"
+        PORT="55910"
+        ENVIRONMENT_NAME="dev"
+        CONTAINER_NAME="paraiso-web-dev"
+      elif [[ "$CI_COMMIT_TAG" =~ ^prod- ]]; then
+        ASPNETCORE_ENVIRONMENT="Production"
+        PORT="55921"
+        ENVIRONMENT_NAME="prod"
+        CONTAINER_NAME="paraiso-web-dev"
+      else
+        echo "Tag não suportada para deploy."
+        exit 1
+      fi
+
+    # Faz o pull da versão correta da imagem
+    - docker pull $SERVIDOR_DOCKER/$CONTAINER_NAME:$TAG_VERSION
+
+    # Verifica e cria a rede necessária, se não existir
+    - docker network inspect rede_paraiso >/dev/null 2>&1 || docker network create rede_paraiso
+
+    # Remove qualquer container antigo com o mesmo nome
+    - docker rm -f $CONTAINER_NAME || true
+
+    # Executa o novo container com a versão e ambiente corretos
+    - docker run --network rede_paraiso -d -p $PORT:8080 --name $CONTAINER_NAME -e ASPNETCORE_ENVIRONMENT=$ASPNETCORE_ENVIRONMENT $SERVIDOR_DOCKER/$CONTAINER_NAME:$TAG_VERSION
+
+
+  after_script:
+    - echo 'Atualização do servidor realizada'
+#  environment:
+#    name: $ENVIRONMENT_NAME
+#    url: http://209.126.11.117:$PORT
+  retry:
+    max: 2
+    when: always
+  only:
+    - tags
