@@ -1,8 +1,29 @@
 stages:     
+  - buildar
   - passar-sonar     
   - gerar-docker
   - deploy
 
+
+buildar:
+  stage: buildar
+  tags: ["alemanha-5-paraiso"]
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  
+    GIT_DEPTH: "0"  
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+      - cd src/paraiso.web/
+      - dotnet build paraiso.web.csproj
+      - dotnet publish
+  allow_failure: true
+  only:
+    - merge_requests
+    - dev
 
 checagem-sonar:
   stage: passar-sonar
