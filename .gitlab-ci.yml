@@ -49,7 +49,7 @@ Implantar:
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
       - echo "parar o serviço"
-      - cp -ri ~/apps/dev/build ~/apps/dev/paraisoweb1
+      - cp -ri /root/apps/dev/build/* /root/apps/dev/paraisoweb1/
       - echo "iniciar o serviço"
   allow_failure: true
   only:
