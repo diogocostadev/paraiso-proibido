@@ -36,6 +36,9 @@ buildar:
   script:
       - cd src/paraiso.web/
       - mkdir -p ~/apps/dev/build
+
+      - "sed -i 's|\"Urls\": \"http://localhost:55910\"|\"Urls\": \"http://0.0.0.0:55910\"|g' AppSettings.Development.json"
+
       - dotnet build paraiso.web.csproj
       - dotnet publish -o ~/apps/dev/build
       - pwd
