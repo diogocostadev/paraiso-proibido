@@ -34,7 +34,7 @@ gerar-imagem:
   services:
     - docker:dind
   before_script:
-    - export DOCKER_HOST=tcp://docker:2375
+  #  - export DOCKER_HOST=tcp://docker:2375
     - echo 'Iniciando o build'
   script:
     
@@ -76,7 +76,7 @@ colocar-no-ar:
   services:
     - docker:dind
   before_script:
-    - export DOCKER_HOST=tcp://docker:2375
+  #  - export DOCKER_HOST=tcp://docker:2375
     - echo 'Iniciando o build'
   script:
     - docker login -u $USUARIO_DOCKER -p $SENHA_DOCKER $SERVIDOR_DOCKER
