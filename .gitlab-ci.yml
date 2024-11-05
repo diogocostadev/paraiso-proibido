@@ -29,7 +29,7 @@ checagem-sonar:
 
 gerar-imagem:
   stage: gerar-docker
-  tags: ["alemanha-5-paraiso"]
+  #tags: ["alemanha-5-paraiso"]
   image: docker:latest
   services:
     - docker:dind
