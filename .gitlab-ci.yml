@@ -7,7 +7,7 @@ stages:
 
 buildar:
   stage: buildar
-  tags: ["paraiso-runner"]
+  tags: ["paraiso-runner-sh"]
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
       - cd src/paraiso.web/
@@ -22,7 +22,7 @@ buildar:
 
 checagem-sonar:
   stage: passar-sonar
-  tags: ["paraiso-runner"]
+  tags: ["paraiso-runner-sh"]
   image: mcr.microsoft.com/dotnet/sdk:8.0
   variables:
     SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  
