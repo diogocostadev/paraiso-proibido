@@ -1,28 +1,14 @@
 stages:     
-  - buildar
   - passar-sonar  
+  - buildar
 
   - gerar-docker
   - deploy
 
-buildar:
-  stage: buildar
-  tags: ["paraiso-runner-sh"]
-  image: mcr.microsoft.com/dotnet/sdk:8.0
-  script:
-      - cd src/paraiso.web/
-      - mkdir -p ~/apps/dev/build
-      - dotnet build paraiso.web.csproj
-      - dotnet publish -o ~/apps/dev/build
-      - pwd
-  allow_failure: true
-  only:
-    - merge_requests
-    - dev
 
 checagem-sonar:
   stage: passar-sonar
-  tags: ["paraiso-runner-sh"]
+  #tags: ["paraiso-runner-sh"]
   image: mcr.microsoft.com/dotnet/sdk:8.0
   variables:
     SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  
@@ -43,8 +29,20 @@ checagem-sonar:
     - merge_requests
     - dev
 
-
-
+buildar:
+  stage: buildar
+  tags: ["paraiso-runner-sh"]
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+      - cd src/paraiso.web/
+      - mkdir -p ~/apps/dev/build
+      - dotnet build paraiso.web.csproj
+      - dotnet publish -o ~/apps/dev/build
+      - pwd
+  allow_failure: true
+  only:
+    - merge_requests
+    - dev
 
 
 gerar-imagem:
