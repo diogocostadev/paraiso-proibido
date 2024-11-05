@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Adiciona o Distributed Cache (usando Redis, por exemplo)
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = "109.199.118.135:6379,abortConnect=false,ssl=false";
+    options.Configuration = "109.199.118.135:6380,password=D1d4C0st4S4nt0s,abortConnect=false,ssl=false";
     options.InstanceName = "RedisCacheInstance";
 });
 builder.Services.AddControllersWithViews();
