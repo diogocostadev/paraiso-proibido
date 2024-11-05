@@ -32,8 +32,11 @@ gerar-imagem:
   tags: ["alemanha-5-paraiso"]
   image: docker:latest
   services:
-    - docker:dind
+    - name: docker:dind
+      command: ["--tls=false"]
+      privileged: true
   before_script:
+    - export DOCKER_HOST=tcp://docker:2375
     - echo 'Iniciando o build'
   script:
     
@@ -73,9 +76,12 @@ colocar-no-ar:
   tags: ["alemanha-5-paraiso"]
   image: docker:latest
   services:
-    - docker:dind
+    - name: docker:dind
+      command: ["--tls=false"]
+      privileged: true
   before_script:
-    - echo 'Atualizando o servidor'
+    - export DOCKER_HOST=tcp://docker:2375
+    - echo 'Iniciando o build'
   script:
     - docker login -u $USUARIO_DOCKER -p $SENHA_DOCKER $SERVIDOR_DOCKER
     # Extraímos a versão removendo o prefixo dev- ou prod-
