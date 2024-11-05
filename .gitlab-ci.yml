@@ -1,7 +1,7 @@
 stages:     
   - passar-sonar  
   - buildar
-
+  - implantar
   - gerar-docker
   - deploy
 
@@ -38,7 +38,19 @@ buildar:
       - mkdir -p ~/apps/dev/build
       - dotnet build paraiso.web.csproj
       - dotnet publish -o ~/apps/dev/build
-      - pwd
+  allow_failure: true
+  only:
+    - merge_requests
+    - dev
+
+Implantar:
+  stage: implantar
+  tags: ["paraiso-runner-sh"]
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+      - echo "parar o serviço"
+      - cp -ri ~/apps/dev/build ~/apps/dev/paraisoweb1
+      - echo "iniciar o serviço"
   allow_failure: true
   only:
     - merge_requests
@@ -133,9 +145,7 @@ colocar-no-ar:
 
   after_script:
     - echo 'Atualização do servidor realizada'
-#  environment:
-#    name: $ENVIRONMENT_NAME
-#    url: http://209.126.11.117:$PORT
+
   retry:
     max: 2
     when: always
