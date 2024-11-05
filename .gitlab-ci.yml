@@ -32,9 +32,7 @@ gerar-imagem:
   tags: ["alemanha-5-paraiso"]
   image: docker:latest
   services:
-    - name: docker:dind
-      command: ["--tls=false"]
-      privileged: true
+    - docker:dind
   before_script:
     - export DOCKER_HOST=tcp://docker:2375
     - echo 'Iniciando o build'
@@ -76,9 +74,7 @@ colocar-no-ar:
   tags: ["alemanha-5-paraiso"]
   image: docker:latest
   services:
-    - name: docker:dind
-      command: ["--tls=false"]
-      privileged: true
+    - docker:dind
   before_script:
     - export DOCKER_HOST=tcp://docker:2375
     - echo 'Iniciando o build'
