@@ -2,8 +2,6 @@ stages:
   - passar-sonar  
   - buildar
   - implantar
-  - gerar-docker
-  - deploy
 
 
 checagem-sonar:
@@ -48,106 +46,10 @@ Implantar:
   tags: ["paraiso-runner-sh"]
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
-      - echo "parar o serviço"
+      - sudo systemctl stop paraisoweb1.service
       - cp -ri /root/apps/dev/build/* /root/apps/dev/paraisoweb1/
-      - echo "iniciar o serviço"
+      - sudo systemctl start paraisoweb1.service
   allow_failure: true
   only:
     - merge_requests
     - dev
-
-
-gerar-imagem:
-  stage: gerar-docker
-  #tags: ["alemanha-5-paraiso"]
-  image: docker:latest
-  services:
-    - docker:dind
-  before_script:
-  #  - export DOCKER_HOST=tcp://docker:2375
-    - echo 'Iniciando o build'
-  script:
-    
-    - |
-      if [[ "$CI_COMMIT_TAG" =~ ^dev- ]]; then
-        ASPNETCORE_ENVIRONMENT="Development"
-        PORT="55910"
-        ENVIRONMENT_NAME="dev"
-        CONTAINER_NAME="paraiso-web-dev"
-      elif [[ "$CI_COMMIT_TAG" =~ ^prod- ]]; then
-        ASPNETCORE_ENVIRONMENT="Production"
-        PORT="55921"
-        ENVIRONMENT_NAME="prod"
-        CONTAINER_NAME="paraiso-web-dev"
-      else
-        echo "Tag não suportada para deploy."
-        exit 1
-      fi
-
-    - ls
-    - cd src
-    - docker login -u $USUARIO_DOCKER -p $SENHA_DOCKER $SERVIDOR_DOCKER
-    - docker build -t $CONTAINER_NAME:$CI_COMMIT_TAG .
-    - docker tag $CONTAINER_NAME:$CI_COMMIT_TAG $SERVIDOR_DOCKER/$CONTAINER_NAME:$CI_COMMIT_TAG
-    - docker push $SERVIDOR_DOCKER/$CONTAINER_NAME:$CI_COMMIT_TAG
-
-  after_script:
-    - echo 'Build e Imagem Finalizados'
-  retry:
-    max: 2 
-    when: always 
-  only:
-    - tags
-
-colocar-no-ar:
-  stage: deploy
-  tags: ["alemanha-5-paraiso"]
-  image: docker:latest
-  services:
-    - docker:dind
-  before_script:
-  #  - export DOCKER_HOST=tcp://docker:2375
-    - echo 'Iniciando o build'
-  script:
-    - docker login -u $USUARIO_DOCKER -p $SENHA_DOCKER $SERVIDOR_DOCKER
-    # Extraímos a versão removendo o prefixo dev- ou prod-
-    - TAG_VERSION=$CI_COMMIT_TAG
-    - echo $TAG_VERSION
-    
-    - |
-      if [[ "$CI_COMMIT_TAG" =~ ^dev- ]]; then
-        ASPNETCORE_ENVIRONMENT="Development"
-        PORT="55910"
-        ENVIRONMENT_NAME="dev"
-        CONTAINER_NAME="paraiso-web-dev"
-      elif [[ "$CI_COMMIT_TAG" =~ ^prod- ]]; then
-        ASPNETCORE_ENVIRONMENT="Production"
-        PORT="55921"
-        ENVIRONMENT_NAME="prod"
-        CONTAINER_NAME="paraiso-web-dev"
-      else
-        echo "Tag não suportada para deploy."
-        exit 1
-      fi
-
-    # Faz o pull da versão correta da imagem
-    - docker pull $SERVIDOR_DOCKER/$CONTAINER_NAME:$TAG_VERSION
-
-    # Verifica e cria a rede necessária, se não existir
-    - docker network inspect rede_paraiso >/dev/null 2>&1 || docker network create rede_paraiso
-
-    # Remove qualquer container antigo com o mesmo nome
-    - docker rm -f $CONTAINER_NAME || true
-
-    # Executa o novo container com a versão e ambiente corretos
-    - docker run --network rede_paraiso -d -p $PORT:8080 --name $CONTAINER_NAME -e ASPNETCORE_ENVIRONMENT=$ASPNETCORE_ENVIRONMENT $SERVIDOR_DOCKER/$CONTAINER_NAME:$TAG_VERSION
-
-
-  after_script:
-    - echo 'Atualização do servidor realizada'
-
-  retry:
-    max: 2
-    when: always
-  only:
-    - tags
