@@ -1,9 +1,24 @@
 stages:     
-  - passar-sonar  
   - buildar
+  - passar-sonar  
+
   - gerar-docker
   - deploy
 
+buildar:
+  stage: buildar
+  tags: ["alemanha-5-paraiso"]
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+      - cd src/paraiso.web/
+      - mkdir -p ~/apps/dev/build
+      - dotnet build paraiso.web.csproj
+      - dotnet publish -o ~/apps/dev/build
+      - pwd
+  allow_failure: true
+  only:
+    - merge_requests
+    - dev
 
 checagem-sonar:
   stage: passar-sonar
@@ -29,18 +44,7 @@ checagem-sonar:
     - dev
 
 
-buildar:
-  stage: buildar
-  tags: ["alemanha-5-paraiso"]
-  image: mcr.microsoft.com/dotnet/sdk:8.0
-  script:
-      - cd src/paraiso.web/
-      - dotnet build paraiso.web.csproj
-      - dotnet publish -o ~/apps/dev/build
-  allow_failure: true
-  only:
-    - merge_requests
-    - dev
+
 
 
 gerar-imagem:
