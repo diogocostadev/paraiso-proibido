@@ -71,7 +71,7 @@ gerar-imagem:
 
 colocar-no-ar:
   stage: deploy
-  tags: ["paraiso-runner"]
+  tags: ["alemanha-5-paraiso"]
   image: docker:latest
   services:
     - docker:dind
