@@ -47,7 +47,7 @@ Implantar:
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
       - systemctl stop paraisoweb1.service
-      - cp -ri /root/apps/dev/build/* /root/apps/dev/paraisoweb1/
+      - cp -rf /root/apps/dev/build/* /root/apps/dev/paraisoweb1/
       - systemctl start paraisoweb1.service
   allow_failure: true
   only:
