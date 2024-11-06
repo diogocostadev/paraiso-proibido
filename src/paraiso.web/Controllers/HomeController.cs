@@ -21,6 +21,8 @@ public class HomeController : Controller
     
     public async Task<IActionResult> Index(int p = 1, int t = 120, string b = "")
     {
+        ViewBag.b = b;
+        
         try
         {
             // Buscar categorias na API e enviar para a view
@@ -35,7 +37,17 @@ public class HomeController : Controller
                 ViewData["Categorias"] = categorias;
             }
             
-            var resultado = await _servicoVideos.ObterVideosAsync(p, t);
+            ResultadoPaginado<VideoBase> resultado;
+
+            if (!string.IsNullOrWhiteSpace(b))
+            {
+                resultado = await _servicoVideos.ObterVideosPorTermoAsync(b, p, t);
+            }
+            else
+            {
+                resultado = await _servicoVideos.ObterVideosAsync(p, t);
+            }
+            
             return View(resultado);
         }
         catch (Exception ex)

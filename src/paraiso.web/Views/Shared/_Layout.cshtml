@@ -16,7 +16,10 @@
                 <h1>Paraiso Proibido</h1>
             </div>
             <div class="search-container">
-                <input type="text" class="search-bar" placeholder="Pesquisar vídeos..." />
+                <form method="get" action="@Url.Action("Index")" class="form-inline">
+                    <input type="text" class="search-bar" placeholder="Pesquisar vídeos..." name="b" id="b" />
+                    <button type="submit" class="search-button">Buscar</button>
+                </form>
             </div>
         </div>
     </header>

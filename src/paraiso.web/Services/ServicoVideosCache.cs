@@ -55,6 +55,8 @@ public class ServicoVideosCache
         IniciarCacheWarming();
     }
 
+
+        
     public async Task<VideoBase> ObterVideoPorIdAsync(string id, int page)
     {
         try
@@ -238,12 +240,117 @@ public class ServicoVideosCache
         // Consulta paginada
         var consultaVideos = @"
             select id, titulo, duracao_segundos, embed, default_thumb_size, default_thumb_src from videos.dev.videos
+            where ativo = true
             ORDER BY data_adicionada DESC
             OFFSET @Offset LIMIT @TamanhoPagina";
 
         var videos = new List<VideoBase>();
         using (var comando = new NpgsqlCommand(consultaVideos, conexao))
         {
+            comando.Parameters.AddWithValue("@Offset", offset);
+            comando.Parameters.AddWithValue("@TamanhoPagina", tamanhoPagina);
+
+            using var leitor = await comando.ExecuteReaderAsync();
+            while (await leitor.ReadAsync())
+            {
+                videos.Add(new VideoBase
+                {
+                    Id = leitor.GetString(0),
+                    Titulo = leitor.GetString(1),
+                    DuracaoSegundos = leitor.GetInt32(2),
+                    Embed = leitor.GetString(3),
+                    DefaultThumbSize = leitor.GetString(4),
+                    DefaultThumbSrc = leitor.GetString(5)
+                });
+            }
+        }
+
+        return new ResultadoPaginado<VideoBase>
+        {
+            Itens = videos,
+            PaginaAtual = pagina,
+            TamanhoPagina = tamanhoPagina,
+            TotalItens = total,
+            TotalPaginas = (int)Math.Ceiling(total / (double)tamanhoPagina)
+        };
+    }
+
+    
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1, int tamanhoPagina = 100)
+    {
+        string chaveCache = $"videos_pagina_{termo}{pagina}_{tamanhoPagina}";
+        
+        try
+        {
+            // Tenta obter do cache
+            var dadosCache = await _cache.GetAsync(chaveCache);
+            if (dadosCache != null)
+            {
+                var dadosDescomprimidos = _usarCompressao
+                    ? DescomprimirDados(dadosCache)
+                    : dadosCache;
+                
+                return JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(
+                    Encoding.UTF8.GetString(dadosDescomprimidos));
+            }
+
+            // Se não estiver em cache, busca do banco usando circuit breaker
+            return await _circuitBreaker.ExecuteAsync(async () =>
+            {
+                var resultado = await ObterVideosPorTermoPaginadosDoBanco(termo, pagina, tamanhoPagina);
+                await ArmazenarEmCache(chaveCache, resultado);
+                return resultado;
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter vídeos");
+            throw;
+        }
+    }
+    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina, int tamanhoPagina)
+    {
+        using var conexao = new NpgsqlConnection(_stringConexao);
+        await conexao.OpenAsync();
+
+        var offset = (pagina - 1) * tamanhoPagina;
+
+        // Consulta para obter o total de registros
+        var consultaTotal = @"
+            WITH unique_videos AS (
+                SELECT DISTINCT vi.id
+                FROM videos.dev.videos vi
+                INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
+                INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
+                WHERE te.termo LIKE @Termo
+            )
+            SELECT count(vi.*)
+            FROM videos.dev.videos vi
+            INNER JOIN unique_videos uv ON vi.id = uv.id";
+
+        using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
+        comandoTotal.Parameters.AddWithValue("@Termo", $"%{termo}%");
+        var total = Convert.ToInt32(await comandoTotal.ExecuteScalarAsync());
+
+        // Consulta paginada
+        var consultaVideos = @"
+            WITH unique_videos AS (
+                SELECT DISTINCT vi.id
+                FROM videos.dev.videos vi
+                INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
+                INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
+                WHERE te.termo LIKE @Termo
+            )
+            SELECT vi.id, vi.titulo, vi.duracao_segundos, vi.embed, vi.default_thumb_size, vi.default_thumb_src
+            FROM videos.dev.videos vi
+            INNER JOIN unique_videos uv ON vi.id = uv.id
+            ORDER BY vi.data_adicionada DESC
+            OFFSET @Offset LIMIT @TamanhoPagina";
+
+        var videos = new List<VideoBase>();
+        using (var comando = new NpgsqlCommand(consultaVideos, conexao))
+        {
+            comando.Parameters.AddWithValue("@Termo", $"%{termo}%");
             comando.Parameters.AddWithValue("@Offset", offset);
             comando.Parameters.AddWithValue("@TamanhoPagina", tamanhoPagina);
 

@@ -28,25 +28,77 @@ header {
   justify-content: space-between;
 }
 
+
 .logo {
-  flex: 0 1 auto;
-  margin-right: 1rem;
+  margin-right: 20px;
 }
 
+.logo h1 {
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+/* Container de busca */
 .search-container {
-  flex: 0 1 auto;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 5px; /* Espaço entre o input e o botão */
 }
 
 .search-bar {
-  width: 100%;
-  max-width: 300px;
-  padding: 0.75rem;
-  font-size: 1rem;
-  border-radius: 5px;
+  height: 36px;
+  padding: 0 12px;
+  font-size: 0.9rem;
+  background-color: #222;
+  color: #fff;
   border: none;
-  outline: none;
+  border-radius: 4px;
+  width: 200px; /* Largura fixa para o campo de texto */
+}
+
+.search-bar::placeholder {
+  color: #888;
+}
+
+.search-button {
+  height: 36px;
+  padding: 0 15px;
+  font-size: 0.9rem;
+  background-color: #444;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap; /* Impede que o texto do botão quebre */
+  display: inline-flex;
+  align-items: center;
+}
+
+.search-button:hover {
+  background-color: #555;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+
+  .search-container {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .search-bar {
+    width: calc(100% - 100px); /* Ajusta a largura deixando espaço para o botão */
+  }
 }
 
 .container {
