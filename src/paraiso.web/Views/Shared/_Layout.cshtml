@@ -47,14 +47,23 @@
     <main role="main" class="pb-3">
         @RenderBody()
     </main>
-
+    
     <footer class="footer">
-        <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        <br/>
-        &copy; @DateTime.Now.Year - Paraíso Proibido
-        build: v1.0.0
+        <div class="footer-content">
+            <div class="footer-links">
+                <a asp-area="" asp-controller="Home" asp-action="PoliticaDePrivacidade">Política de Privacidade</a>
+                <a asp-area="" asp-controller="Home" asp-action="PoliticaDeCookie">Política de Cookie</a>
+                <a asp-area="" asp-controller="Home" asp-action="AvisoConteudoSensivel">Aviso de Conteúdo Sensível</a>
+                <a asp-area="" asp-controller="Home" asp-action="RemocaoDeVideo">Remoção de Conteúdo</a>
+                <a asp-area="" asp-controller="Home" asp-action="TermoDeConsentimento">Termo de Consentimento</a>
+                <a asp-area="" asp-controller="Home" asp-action="TermoDeUso">Termo de Uso</a>
+            </div>
+            <div class="footer-copyright">
+                &copy; @DateTime.Now.Year - Paraíso Proibido - build: v1.0.0
+            </div>
+        </div>
     </footer>
-
+    
     <div id="ageVerificationModal" class="age-modal">
         <div class="age-modal-content">
             <h2>Paraiso Proibido é um website apenas para adultos!</h2>
