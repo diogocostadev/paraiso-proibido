@@ -32,10 +32,10 @@ buildar:
   tags: ["paraiso-runner-sh"]
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
+      - rm -R /root/apps/dev/build/
       - cd src/paraiso.web/
-      - mkdir -p ~/apps/dev/build
       - dotnet build paraiso.web.csproj
-      - dotnet publish -o ~/apps/dev/build
+      - dotnet publish -o /root/apps/dev/build/
   allow_failure: true
   only:
     - merge_requests
@@ -46,9 +46,9 @@ Implantar:
   tags: ["paraiso-runner-sh"]
   image: mcr.microsoft.com/dotnet/sdk:8.0
   script:
-      - sudo systemctl stop paraisoweb1.service
-      - cp -ri /root/apps/dev/build/* /root/apps/dev/paraisoweb1/
-      - sudo systemctl start paraisoweb1.service
+      - systemctl stop paraisoweb1.service
+      - cp -rf /root/apps/dev/build/* /root/apps/dev/paraisoweb1/
+      - systemctl start paraisoweb1.service
   allow_failure: true
   only:
     - merge_requests
