@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsumidorRoboPhub", "ConsumidorRoboPhub\ConsumidorRoboPhub.csproj", "{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "paraiso.phub.atualizador", "paraiso.phub.atualizador\paraiso.phub.atualizador.csproj", "{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,9 +39,14 @@ Global
 		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D3C7D81E-D5BA-43BD-86EF-71B008A6061A} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
 		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
 	EndGlobalSection
 EndGlobal
