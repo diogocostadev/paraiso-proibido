@@ -13,9 +13,8 @@ public class Worker : BackgroundService
 
     private readonly HttpClient _httpClient;
     private readonly string _connectionString;
-    private const string API_URL = "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=medium&ordering=newest&page=";
+    private const string API_URL = "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=all&ordering=newest&page=";
 
-    
     public Worker(ILogger<Worker> logger)
     {
         _logger = logger;
@@ -31,7 +30,7 @@ public class Worker : BackgroundService
             {
                 _logger.LogInformation("Iniciando sincronização de vídeos: {time}", DateTimeOffset.Now);
 
-                var lastSyncDate = new DateTime(2024, 10, 23); //await GetLastSyncDate();
+                var lastSyncDate =  new DateTime(1980, 1, 1); //await GetLastSyncDate();
                 if (lastSyncDate == DateTime.MinValue)
                 {
                     _logger.LogInformation("Nenhum vídeo encontrado no banco. Iniciando primeira sincronização.");
@@ -77,8 +76,8 @@ public class Worker : BackgroundService
                 _logger.LogInformation("Nenhum vídeo encontrado na página {Page}", currentPage);
                 break;
             }
-
-            shouldContinue = await ProcessVideos(videos, lastSyncDate);
+            
+            shouldContinue = await ProcessVideos(videos, lastSyncDate, currentPage);
             
             if (shouldContinue)
             {
@@ -95,7 +94,17 @@ public class Worker : BackgroundService
         {
             var response = await _httpClient.GetAsync($"{API_URL}{page}");
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<VideosHome>();
+            
+            var result = await response.Content.ReadFromJsonAsync<VideosHome>();
+            
+            if (result?.Videos?.Count == 0 && result?.Count > 0)
+            {
+                _logger.LogInformation("Fim da paginação detectado. Count: {Count}", result.Count);
+                return null;
+            }
+
+            return result;
+            
         }
         catch (Exception ex)
         {
@@ -104,56 +113,95 @@ public class Worker : BackgroundService
         }
     }
 
-    private async Task<bool> ProcessVideos(VideosHome videosHome, DateTime lastSyncDate)
+    private async Task<bool> ProcessVideos(VideosHome videosHome, DateTime lastSyncDate, int currentPage)
     {
+        if (videosHome == null || videosHome.Videos == null || !videosHome.Videos.Any())
+        {
+            _logger.LogInformation("Não há mais vídeos para processar. Encerrando sincronização.");
+            return false;
+        }
+
+        int monitorId = await InserirMonitoramentoCarga(currentPage);
+        int videosProcessados = 0;
+        int videosNovos = 0;
+        int videosAtualizados = 0;
+        int erros = 0;
+        string mensagemErro = null;
+
         using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
-        
         bool shouldContinue = true;
-        
-        foreach (var videoItem in videosHome.Videos)
+
+        try
         {
-            var video = videoItem.Video.MapperToModel();
-            
-            // Se encontrarmos um vídeo mais antigo que o último do banco, paramos
-            if (video.DataAdicionada <= lastSyncDate)
+            foreach (var videoItem in videosHome.Videos)
             {
-                _logger.LogInformation("Encontrado vídeo mais antigo que a última sincronização: {VideoId}", video.Id);
-                shouldContinue = false;
-                break;
-            }
-
-            await using var transaction = await connection.BeginTransactionAsync();
-            try
-            {
-                if (await VideoExists(connection, video.Id))
+                NpgsqlTransaction transaction = null;
+                try
                 {
-                    await UpdateVideo(connection, video);
-                    _logger.LogInformation("Vídeo atualizado: {VideoId}", video.Id);
-                }
-                else
-                {
-                    await InsertVideo(connection, video);
-                    _logger.LogInformation("Novo vídeo inserido: {VideoId}", video.Id);
-                }
+                    var video = videoItem.Video.MapperToModel();
 
-                // Atualiza miniaturas e termos
-                await UpdateThumbnails(connection, video.Id, video.Miniaturas);
-                await UpdateTerms(connection, video.Id, video.Termos);
-                
-                await transaction.CommitAsync();
+                    if (video.DataAdicionada <= lastSyncDate)
+                    {
+                        _logger.LogInformation("Encontrado vídeo mais antigo que a última sincronização: {VideoId}", video.Id);
+                        shouldContinue = false;
+                        break;
+                    }
+
+                    transaction = await connection.BeginTransactionAsync();
+
+                    if (await VideoExists(connection, video.Id))
+                    {
+                        await UpdateVideo(connection, video);
+                        videosAtualizados++;
+                    }
+                    else
+                    {
+                        await InsertVideo(connection, video);
+                        videosNovos++;
+                    }
+
+                    await UpdateThumbnails(connection, video.Id, video.Miniaturas);
+                    await UpdateTerms(connection, video.Id, video.Termos);
+
+                    await transaction.CommitAsync();
+                    videosProcessados++;
+                }
+                catch (Exception ex)
+                {
+                    if (transaction != null)
+                    {
+                        await transaction.RollbackAsync();
+                    }
+
+                    erros++;
+                    _logger.LogError(ex, "Erro ao processar vídeo {VideoId}",
+                        videoItem?.Video?.VideoId ?? "ID desconhecido");
+                }
+                finally
+                {
+                    if (transaction != null)
+                    {
+                        await transaction.DisposeAsync();
+                    }
+                }
             }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                _logger.LogError(ex, "Erro ao processar vídeo {VideoId}", video.Id);
-                throw;
-            }
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = ex.Message;
+            _logger.LogError(ex, "Erro durante o processamento da página {Page}", currentPage);
+        }
+        finally
+        {
+            await AtualizarMonitoramentoCarga(monitorId, videosProcessados, videosNovos,
+                videosAtualizados, erros, mensagemErro);
+            await AtualizarMetricasSync();
         }
 
         return shouldContinue;
     }
-    
+
     private async Task<bool> VideoExists(NpgsqlConnection connection, string videoId)
     {
         const string sql = "SELECT COUNT(1) FROM dev.videos WHERE id = @Id";
@@ -214,33 +262,152 @@ public class Worker : BackgroundService
 
     private async Task UpdateTerms(NpgsqlConnection connection, string videoId, List<Termo> terms)
     {
-        // Remove associações existentes
+        if (terms == null || !terms.Any())
+            return;
+
+        // Remove associações existentes primeiro
         const string deleteVideoTermsSql = "DELETE FROM dev.video_termos WHERE video_id = @VideoId";
         await connection.ExecuteAsync(deleteVideoTermsSql, new { VideoId = videoId });
 
-        foreach (var term in terms)
+        // Pega todos os termos existentes de uma vez para evitar múltiplas queries
+        const string getExistingTermsSql = @"
+        SELECT id, termo 
+        FROM dev.termos 
+        WHERE termo = ANY(@Termos)";
+
+        var termosArray = terms.Select(t => t.termo).ToArray();
+        var existingTerms =
+            (await connection.QueryAsync<(int id, string termo)>(getExistingTermsSql, new { Termos = termosArray }))
+            .ToDictionary(t => t.termo, t => t.id);
+
+        // Identifica termos que precisam ser inseridos
+        var newTerms = terms.Where(t => !existingTerms.ContainsKey(t.termo))
+            .Select(t => t.termo)
+            .ToList();
+
+        if (newTerms.Any())
         {
-            // Insere ou recupera o termo
-            const string termSql = @"
-                WITH inserted AS (
-                    INSERT INTO dev.termos (termo)
-                    VALUES (@Termo)
-                    ON CONFLICT (termo) DO UPDATE SET termo = EXCLUDED.termo
-                    RETURNING id
-                )
-                SELECT id FROM inserted
-                UNION ALL
-                SELECT id FROM dev.termos WHERE termo = @Termo
-                LIMIT 1";
+            // Insere novos termos em batch
+            const string insertTermsSql = @"
+            INSERT INTO dev.termos (termo)
+            SELECT unnest(@Termos)
+            ON CONFLICT (termo) DO NOTHING
+            RETURNING id, termo";
 
-            var termId = await connection.QuerySingleAsync<int>(termSql, new { Termo = term.termo });
-
-            // Associa o termo ao vídeo
-            const string videoTermSql = @"
-                INSERT INTO dev.video_termos (video_id, termo_id)
-                VALUES (@VideoId, @TermoId)";
-
-            await connection.ExecuteAsync(videoTermSql, new { VideoId = videoId, TermoId = termId });
+            var insertedTerms =
+                await connection.QueryAsync<(int id, string termo)>(insertTermsSql, new { Termos = newTerms });
+            foreach (var term in insertedTerms)
+            {
+                existingTerms[term.termo] = term.id;
+            }
         }
+
+        // Prepara as associações vídeo-termo
+        var videoTerms = terms.Select(t => new
+        {
+            VideoId = videoId,
+            TermoId = existingTerms[t.termo]
+        }).ToList();
+
+        // Insere todas as associações de uma vez
+        const string videoTermSql = @"
+        INSERT INTO dev.video_termos (video_id, termo_id)
+        SELECT unnest(@VideoIds), unnest(@TermoIds)";
+
+        await connection.ExecuteAsync(videoTermSql, new
+        {
+            VideoIds = videoTerms.Select(vt => vt.VideoId).ToArray(),
+            TermoIds = videoTerms.Select(vt => vt.TermoId).ToArray()
+        });
+    }
+    
+    private async Task<int> InserirMonitoramentoCarga(int pagina)
+    {
+        using var connection = new NpgsqlConnection(_connectionString);
+        const string sql = @"
+            INSERT INTO dev.monitor_carga_videos 
+                (pagina, data_inicio, status)
+            VALUES 
+                (@Pagina, @DataInicio, @Status)
+            RETURNING id";
+
+        return await connection.QuerySingleAsync<int>(sql, new
+        {
+            Pagina = pagina,
+            DataInicio = DateTime.UtcNow,
+            Status = "em_andamento"
+        });
+    }
+
+    private async Task AtualizarMonitoramentoCarga(int monitorId, int videosProcessados, int videosNovos, 
+        int videosAtualizados, int erros = 0, string mensagemErro = null)
+    {
+        using var connection = new NpgsqlConnection(_connectionString);
+        const string sql = @"
+            UPDATE dev.monitor_carga_videos 
+            SET videos_processados = @VideosProcessados,
+                videos_novos = @VideosNovos,
+                videos_atualizados = @VideosAtualizados,
+                erros = @Erros,
+                data_fim = @DataFim,
+                duracao_segundos = EXTRACT(EPOCH FROM (@DataFim - data_inicio))::INTEGER,
+                status = @Status,
+                mensagem_erro = @MensagemErro
+            WHERE id = @Id";
+
+        await connection.ExecuteAsync(sql, new
+        {
+            Id = monitorId,
+            VideosProcessados = videosProcessados,
+            VideosNovos = videosNovos,
+            VideosAtualizados = videosAtualizados,
+            Erros = erros,
+            DataFim = DateTime.UtcNow,
+            Status = mensagemErro == null ? "concluido" : "erro",
+            MensagemErro = mensagemErro
+        });
+    }
+
+    private async Task AtualizarMetricasSync()
+    {
+        using var connection = new NpgsqlConnection(_connectionString);
+        const string sql = @"
+            INSERT INTO dev.monitor_metricas_sync (
+                data_medicao,
+                total_videos,
+                media_videos_por_minuto,
+                paginas_processadas,
+                tempo_medio_por_pagina,
+                ultima_sincronizacao,
+                proxima_sincronizacao
+            )
+            SELECT 
+                NOW() as data_medicao,
+                (SELECT COUNT(*) FROM dev.videos) as total_videos,
+                (
+                    SELECT 
+                        ROUND(AVG(videos_processados::numeric / NULLIF(duracao_segundos, 0) * 60), 2)
+                    FROM dev.monitor_carga_videos
+                    WHERE data_inicio >= NOW() - INTERVAL '1 hour'
+                ) as media_videos_por_minuto,
+                (
+                    SELECT COUNT(DISTINCT pagina) 
+                    FROM dev.monitor_carga_videos 
+                    WHERE data_inicio >= NOW() - INTERVAL '24 hours'
+                ) as paginas_processadas,
+                (
+                    SELECT ROUND(AVG(duracao_segundos::numeric), 2)
+                    FROM dev.monitor_carga_videos
+                    WHERE data_inicio >= NOW() - INTERVAL '1 hour'
+                    AND status = 'concluido'
+                ) as tempo_medio_por_pagina,
+                (
+                    SELECT MAX(data_fim)
+                    FROM dev.monitor_carga_videos
+                    WHERE status = 'concluido'
+                ) as ultima_sincronizacao,
+                NOW() + INTERVAL '24 hours' as proxima_sincronizacao";
+
+        await connection.ExecuteAsync(sql);
     }
 }

@@ -60,13 +60,10 @@ public class RabbitMqConsumer
         channel.BasicConsume(queue: _queueName, autoAck: false, consumer: consumer);
 
     }
-
-
     private async Task<List<Termo>> CarregarTermosExistentes(NpgsqlConnection connection)
     {
         return (await connection.QueryAsync<Termo>("SELECT id, termo FROM dev.termos")).ToList();
     }
-
     private async Task ColocarVideosNoBanco(VideosHome videosHome)
     {
         Console.WriteLine($"Mensagem recebida: {DateTime.Now}");
@@ -95,7 +92,6 @@ public class RabbitMqConsumer
 
         }
     }
-
     private void CadastrarTermos(NpgsqlConnection connection, List<Tags> termos, Dictionary<int, string> termosExistentes, string videoId)
     {
         foreach (var termo in termos)
