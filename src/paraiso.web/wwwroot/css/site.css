@@ -78,6 +78,91 @@ header {
   background-color: #555;
 }
 
+
+
+/* Container for all content */
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 140px);
+}
+
+/* Video grid container */
+.videos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 2rem; /* Add space between videos and pagination */
+}
+
+/* Pagination container */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto; /* Push pagination to bottom of container */
+  padding: 2rem 0;
+  width: 100%;
+}
+
+/* Individual page links */
+.pagination-container a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #333;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+/* Hover state for links */
+.pagination-container a:hover {
+  background-color: #444;
+}
+
+/* Active page */
+.pagination-container a.active {
+  background-color: #1b2128;
+  cursor: default;
+}
+
+/* Previous/Next buttons */
+.pagination-container a.nav-button {
+  padding: 0.5rem 1rem;
+  background-color: #1b2128;
+}
+
+.pagination-container a.nav-button:hover {
+  background-color: #1657a3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pagination-container {
+    gap: 0.25rem;
+  }
+
+  .pagination-container a {
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/*---------*/
+
+
 /* Responsividade */
 @media (max-width: 768px) {
   .header-content {
@@ -108,73 +193,111 @@ header {
   flex: 1;
 }
 
+/* Reset básico para a navbar */
 .navbar {
-  background-color: #444;
-  overflow: visible;
-  padding: 1rem;
-  z-index: 100;
-  position: relative;
+  background-color: #18191a;
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid #2c2d2e;
 }
 
 .navbar ul {
-  list-style-type: none;
+  list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  justify-content: center;
-  gap: 1rem;
+  align-items: center;
+  gap: 0;
 }
 
 .navbar ul li {
   position: relative;
+  margin: 0;
 }
 
 .navbar ul li a {
-  color: #f5f5f5;
+  color: #e4e6eb;
   text-decoration: none;
-  padding: 0.5rem 1rem;
+  padding: 15px 20px;
   display: block;
-  transition: background-color 0.3s;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
+/* Estilo hover para os links */
 .navbar ul li a:hover {
-  background-color: #1b6ec2;
+  background-color: #2c2d2e;
+  color: #ffffff;
 }
 
+/* Estilização do dropdown */
 .dropdown {
   position: relative;
-  display: inline-block;
-  z-index: 150;
-}
-
-.dropbtn {
-  cursor: pointer;
 }
 
 .dropdown-content {
   display: none;
   position: absolute;
-  background-color: #2a2a2a;
-  min-width: 160px;
-  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-  z-index: 200;
+  background-color: #242526;
+  min-width: 200px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  z-index: 1000;
+  border-radius: 0 0 4px 4px;
+  border: 1px solid #2c2d2e;
+  border-top: none;
 }
 
 .dropdown-content a {
-  color: #1b6ec2;
-  padding: 12px 16px;
-  text-decoration: none;
+  color: #e4e6eb;
+  padding: 12px 20px;
   display: block;
+  border-bottom: 1px solid #2c2d2e;
+}
+
+.dropdown-content a:last-child {
+  border-bottom: none;
 }
 
 .dropdown-content a:hover {
-  background-color: #1b6ec2;
-  color: #fff;
+  background-color: #2c2d2e;
 }
 
 .dropdown:hover .dropdown-content {
   display: block;
 }
+
+/* Seta para baixo no dropdown */
+.dropbtn::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 8px;
+  vertical-align: middle;
+  border-top: 4px solid #e4e6eb;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .navbar ul {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dropdown-content {
+    position: static;
+    box-shadow: none;
+    border: none;
+  }
+
+  .navbar ul li a {
+    padding: 12px 15px;
+  }
+}
+
 
 .footer {
   text-align: center;
@@ -217,6 +340,7 @@ header {
   color: #fff;
   text-align: center;
 }
+
 
 @media (min-width: 768px) {
   html {
@@ -295,13 +419,13 @@ header {
 /* Estilos para os links "Anterior" e "Próxima" */
 .pagination2 a:first-child,
 .pagination2 a:last-child {
-  background-color: #2563eb; /* Cor de fundo azul (equivalente ao bg-blue-500) */
+  background-color: #393636; /* Cor de fundo azul (equivalente ao bg-blue-500) */
   color: #fff;            /* Cor do texto branca */
 }
 
 .pagination2 a:first-child:hover,
 .pagination2 a:last-child:hover {
-  background-color: #1d4ed8; /* Cor de fundo azul escuro ao passar o mouse (equivalente ao hover:bg-blue-600) */
+  background-color: #393636; /* Cor de fundo azul escuro ao passar o mouse (equivalente ao hover:bg-blue-600) */
 }
 
 /* Estilos para os links numéricos */
@@ -311,13 +435,13 @@ header {
 }
 
 .pagination2 a:not(:first-child):not(:last-child):hover {
-  background-color: #2563eb; /* Cor de fundo azul ao passar o mouse (equivalente ao hover:bg-blue-500) */
+  background-color: #393636; /* Cor de fundo azul ao passar o mouse (equivalente ao hover:bg-blue-500) */
   color: #fff;            /* Cor do texto branca */
 }
 
 /* Estilos para o link da página atual */
 .pagination2 a.bg-blue-600 {
-  background-color: #1d4ed8; /* Cor de fundo azul escuro (equivalente ao bg-blue-600) */
+  background-color: #393636; /* Cor de fundo azul escuro (equivalente ao bg-blue-600) */
   color: #fff;            /* Cor do texto branca */
   pointer-events: none;    /* Impede que o link da página atual seja clicado */
 }
@@ -938,3 +1062,7 @@ button:hover {
     padding: 20px;
   }
 }
+
+
+
+

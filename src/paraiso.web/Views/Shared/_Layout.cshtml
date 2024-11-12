@@ -23,6 +23,7 @@
             </div>
         </div>
     </header>
+    
     <nav class="navbar">
         <ul>
             <li><a href="/">Home</a></li>
@@ -31,16 +32,16 @@
                 <div class="dropdown-content">
                     @if (ViewData["Categorias"] != null)
                     {
-                    var categorias = ViewData["Categorias"] as List<Categoria>;
-                    foreach (var categoria in categorias)
-                    {
-                    <a href="#">@categoria.Category</a>
-                    }
+                        var categorias = ViewData["Categorias"] as List<Categoria>;
+                        foreach (var categoria in categorias)
+                        {
+                            <a href="#">@categoria.Nome</a>
+                        }
                     }
                 </div>
             </li>
-            <li><a href="/videos">Vídeos</a></li>
-            <li><a href="/privacy">Privacy</a></li>
+            @* <li><a href="/videos">Vídeos</a></li> *@
+            @* <li><a href="/privacy">Privacy</a></li> *@
         </ul>
     </nav>
     

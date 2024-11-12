@@ -25,20 +25,13 @@ public class HomeController : Controller
         
         try
         {
-            // Buscar categorias na API e enviar para a view
-            var response = await _httpClient.GetAsync("https://api.redtube.com/?data=redtube.Categories.getCategoriesList&output=json");
-            if (response.IsSuccessStatusCode)
-            {
-                var jsonResponse = await response.Content.ReadAsStringAsync();
-            
-                var jsonDocument = JsonDocument.Parse(jsonResponse);
-                var categoriasJson = jsonDocument.RootElement.GetProperty("categories").GetRawText();
-                var categorias = JsonSerializer.Deserialize<List<Models.Categoria>>(categoriasJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                ViewData["Categorias"] = categorias;
-            }
-            
-            ResultadoPaginado<VideoBase> resultado;
+            //Layout
+            var categorias = (await _servicoVideos.ObterCategoria()).Where(o => o.Mostrar.HasValue && o.Mostrar.Value).ToList();
+            categorias.Add(new Categoria() { Id = 0, Nome = "Todas" });
+            ViewData["Categorias"] = categorias;
 
+            //Container
+            ResultadoPaginado<VideoBase> resultado;
             if (!string.IsNullOrWhiteSpace(b))
             {
                 resultado = await _servicoVideos.ObterVideosPorTermoAsync(b, p, t);
@@ -47,7 +40,6 @@ public class HomeController : Controller
             {
                 resultado = await _servicoVideos.ObterVideosAsync(p, t);
             }
-            
             return View(resultado);
         }
         catch (Exception ex)

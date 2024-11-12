@@ -56,6 +56,54 @@ public class ServicoVideosCache
     }
 
 
+    public async Task<List<Categoria>> ObterCategoria()
+    {
+        try
+        {
+            var chaveCache = "categorias";
+            var dadosCache = await _cache.GetAsync(chaveCache);
+
+            if (dadosCache != null)
+            {
+                var dadosDescomprimidos = _usarCompressao
+                    ? DescomprimirDados(dadosCache)
+                    : dadosCache;
+
+                return JsonSerializer.Deserialize<List<Categoria>>(
+                    Encoding.UTF8.GetString(dadosDescomprimidos));
+            }
+
+            return await _circuitBreaker.ExecuteAsync(async () =>
+            {
+                var categorias = new List<Categoria>();
+
+                using var conexao = new NpgsqlConnection(_stringConexao);
+                await conexao.OpenAsync();
+
+                var consulta = "SELECT id, nome, mostrar FROM dev.categorias";
+                using var comando = new NpgsqlCommand(consulta, conexao);
+
+                using var leitor = await comando.ExecuteReaderAsync();
+                while (await leitor.ReadAsync())
+                {
+                    categorias.Add(new Categoria
+                    {
+                        Id = leitor.GetInt32(0),
+                        Nome = leitor.GetString(1),
+                        Mostrar = !leitor.IsDBNull(2) ? leitor.GetBoolean(2) : false
+                    });
+                }
+
+                await ArmazenarEmCache(chaveCache, categorias);
+                return categorias;
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter categorias");
+            throw;
+        }
+    }
         
     public async Task<VideoBase> ObterVideoPorIdAsync(string id, int page)
     {
