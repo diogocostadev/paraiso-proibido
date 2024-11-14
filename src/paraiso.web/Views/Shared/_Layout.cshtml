@@ -35,7 +35,14 @@
                         var categorias = ViewData["Categorias"] as List<Categoria>;
                         foreach (var categoria in categorias)
                         {
-                            <a href="#">@categoria.Nome</a>
+                            if (@categoria.Id > 0)
+                            {
+                                <a asp-route-catid="@categoria.Id" asp-action="Index" asp-controller="Home">@categoria.Nome</a>
+                            }
+                            else
+                            {
+                                <a asp-action="Categorias" asp-controller="Home">@categoria.Nome</a>
+                            }
                         }
                     }
                 </div>

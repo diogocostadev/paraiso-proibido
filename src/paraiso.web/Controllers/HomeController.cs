@@ -19,7 +19,46 @@ public class HomeController : Controller
         _httpClient = httpClientFactory.CreateClient();
     }
     
-    public async Task<IActionResult> Index(int p = 1, int t = 120, string b = "")
+    public async Task<IActionResult> Index(int p = 1, int t = 120, string b = "",int catid = 0)
+    {
+        ViewBag.b = b;
+        
+        try
+        {
+            //Layout
+            var categorias = (await _servicoVideos.ObterCategoria()).Where(o => o.Mostrar.HasValue && o.Mostrar.Value).ToList();
+            categorias.Add(new Categoria() { Id = 0, Nome = "Todas" });
+            ViewData["Categorias"] = categorias;
+
+            //Container
+            ResultadoPaginado<VideoBase> resultado;
+            if (!string.IsNullOrWhiteSpace(b))
+            {
+                resultado = await _servicoVideos.ObterVideosPorTermoAsync(b, p, t);
+            }
+            else if (catid > 0)
+            {
+                resultado = await _servicoVideos.ObterVideosPorCategoriaAsync(catid, p, t);
+            }
+            else
+            {
+                resultado = await _servicoVideos.ObterVideosAsync(p, t);
+            }
+            return View(resultado);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao carregar vídeos");
+            return View(new ResultadoPaginado<VideoBase>
+            {
+                Itens = new List<VideoBase>(),
+                PaginaAtual = p,
+                TamanhoPagina = t
+            });
+        }
+    }
+    
+    public async Task<IActionResult> Categorias(int p = 1, int t = 120, string b = "")
     {
         ViewBag.b = b;
         
@@ -53,9 +92,15 @@ public class HomeController : Controller
             });
         }
     }
-    
+
     public async Task<IActionResult> V(string id, int p)
     {
+        //Layout
+        var categorias = (await _servicoVideos.ObterCategoria()).Where(o => o.Mostrar.HasValue && o.Mostrar.Value).ToList();
+        categorias.Add(new Categoria() { Id = 0, Nome = "Todas" });
+        ViewData["Categorias"] = categorias;
+        
+        //Container
         var resultado = await _servicoVideos.ObterVideoPorIdAsync(id, p);
         return View(resultado);
     }
