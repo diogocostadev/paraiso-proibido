@@ -18,7 +18,7 @@ public class CategoryWorker : BackgroundService
     {
         _logger = logger;
         _httpClient = new HttpClient();
-        _connectionString = "Host=212.56.47.25ı;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos";
+        _connectionString = "Host=212.56.47.25;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos";
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -37,8 +37,8 @@ public class CategoryWorker : BackgroundService
                 // Processa vídeos por categoria continuando de onde parou
                 await ProcessAllCategoriesContinuous(stoppingToken);
 
-                // Aguarda 24 horas antes da próxima verificação
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+                // Aguarda 5 minutos antes da próxima verificação
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
             }
             catch (Exception ex)
             {
@@ -97,6 +97,13 @@ public class CategoryWorker : BackgroundService
         return count > 0;
     }
 
+    private async Task<bool> VideoExists(NpgsqlConnection connection, string videoId)
+    {
+        const string sql = "SELECT COUNT(1) FROM dev.videos WHERE id = @VideoId";
+        var count = await connection.ExecuteScalarAsync<int>(sql, new { VideoId = videoId });
+        return count > 0;
+    }
+    
     private async Task InsertCategory(NpgsqlConnection connection, Categoria categoria)
     {
         try
@@ -201,9 +208,20 @@ public class CategoryWorker : BackgroundService
         {
             try
             {
-                if (await InsertVideoCategory(connection, videoItem.Video.VideoId, categoryId))
+                // Primeiro verifica se o vídeo existe
+                if (await VideoExists(connection, videoItem.Video.VideoId))
                 {
-                    processedCount++;
+                    if (await InsertVideoCategory(connection, videoItem.Video.VideoId, categoryId))
+                    {
+                        processedCount++;
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Vídeo {VideoId} ainda não existe na base. Será processado na próxima execução.", 
+                        videoItem.Video.VideoId
+                    );
                 }
             }
             catch (Exception ex)
@@ -215,7 +233,7 @@ public class CategoryWorker : BackgroundService
 
         return processedCount;
     }
-
+    
     private async Task<bool> InsertVideoCategory(NpgsqlConnection connection, string videoId, int categoryId)
     {
         try
