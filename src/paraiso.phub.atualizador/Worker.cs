@@ -17,6 +17,7 @@ public class Worker : BackgroundService
 
     public Worker(ILogger<Worker> logger)
     {
+        Console.WriteLine("-=[Atualizador de vídeos iniciado]=-");
         _logger = logger;
         _httpClient = new HttpClient();
         _connectionString = "Host=212.56.47.25;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos";
