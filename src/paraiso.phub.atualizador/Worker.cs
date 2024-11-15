@@ -167,7 +167,7 @@ public class Worker : BackgroundService
 
                     await transaction.CommitAsync();
                     videosProcessados++;
-                    Console.WriteLine($"Página: {currentPage} \r\n Video: {videosProcessados}");
+                    Console.WriteLine($"Página: {currentPage} - Video: {videosProcessados}");
                 }
                 catch (Exception ex)
                 {
