@@ -18,7 +18,7 @@ public class CategoryWorker : BackgroundService
     {
         _logger = logger;
         _httpClient = new HttpClient();
-        _connectionString = "Host=109.199.118.135;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos";
+        _connectionString = "Host=212.56.47.25ı;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos";
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

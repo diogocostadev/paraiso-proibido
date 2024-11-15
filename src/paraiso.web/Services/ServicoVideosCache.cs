@@ -33,7 +33,7 @@ public class ServicoVideosCache
     {
         _cache = cache;
         _logger = logger;
-        _stringConexao = "Host=109.199.118.135;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos";
+        _stringConexao = "Host=212.56.47.25;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos";
         _applicationLifetime = applicationLifetime;
 
         // Configuração do Circuit Breaker
