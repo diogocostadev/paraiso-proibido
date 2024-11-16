@@ -29,6 +29,8 @@ public class CategoryWorker : BackgroundService
         {
             try
             {
+                _logger.LogInformation("-=[Iniciando resgate de categorias e vídeos]=-");
+
                 // Primeiro verifica se existem categorias no banco
                 if (!await HasCategories())
                 {
