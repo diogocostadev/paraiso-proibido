@@ -159,7 +159,7 @@ public class CategoryWorker : BackgroundService
         {
             try
             {
-                var url = $"{VIDEOS_API_URL}&category='{Uri.EscapeDataString(categoryName)}'&page={currentPage}";
+                var url = $"{VIDEOS_API_URL}&category='{categoryName}'&page={currentPage}";
                 var videos = await FetchVideosFromApi(url);
 
                 if (videos?.Videos == null || !videos.Videos.Any())
