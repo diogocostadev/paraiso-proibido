@@ -29,7 +29,7 @@ public class CategoryWorker : BackgroundService
         {
             try
             {
-                _logger.LogInformation("-=[Iniciando resgate de categorias e vídeos]=-");
+                _logger.LogInformation("-=[Iniciando resgate de categorias e vídeos - v0.0.1]=-");
 
                 // Primeiro verifica se existem categorias no banco
                 if (!await HasCategories())
@@ -159,14 +159,17 @@ public class CategoryWorker : BackgroundService
         {
             try
             {
-                var url = $"{VIDEOS_API_URL}&category={Uri.EscapeDataString(categoryName)}&page={currentPage}";
+                var url = $"{VIDEOS_API_URL}&category='{Uri.EscapeDataString(categoryName)}'&page={currentPage}";
                 var videos = await FetchVideosFromApi(url);
 
                 if (videos?.Videos == null || !videos.Videos.Any())
                 {
+                    Console.WriteLine("Finalizou a buscar de categoria: " + categoryName);
                     shouldContinue = false;
                     continue;
                 }
+
+                Console.WriteLine("Buscando a categoria: " + categoryName);
 
                 int processedCount = await ProcessVideoCategories(videos, categoryId);
                 
