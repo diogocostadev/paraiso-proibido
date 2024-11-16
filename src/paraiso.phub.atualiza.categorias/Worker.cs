@@ -16,6 +16,8 @@ public class CategoryWorker : BackgroundService
     private const string CATEGORIES_API_URL = "https://api.redtube.com/?data=redtube.Categories.getCategoriesList&output=json";
     private const string VIDEOS_API_URL = "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=all&ordering=newest";
 
+    private Dictionary<string, List<int>> categoria_falhas = new Dictionary<string, List<int>>();
+    
     public CategoryWorker(ILogger<CategoryWorker> logger)
     {
         _logger = logger;
@@ -67,6 +69,18 @@ public class CategoryWorker : BackgroundService
         }
     }
 
+    private void RegistrarFalhas(string categoria, int pagina)
+    {
+        if (categoria_falhas.ContainsKey(categoria))
+        {
+            categoria_falhas[categoria].Add(pagina);
+        }
+        else
+        {
+            categoria_falhas.Add(categoria, new List<int> { pagina });
+        }
+    }
+    
     private async Task SyncNewCategories()
     {
         try
@@ -150,6 +164,16 @@ public class CategoryWorker : BackgroundService
         });
     }
 
+    private bool DeveContinuar(string categoria, int pagina)
+    {
+        if (categoria_falhas.ContainsKey(categoria))
+        {
+            return categoria_falhas.FirstOrDefault(o => o.Key == categoria).Value.Count >= 10;
+        }
+
+        return true;    
+    }
+    
     private async Task ProcessCategoryVideos(int categoryId, string categoryName, int startPage, CancellationToken stoppingToken)
     {
         int currentPage = startPage;
@@ -164,8 +188,9 @@ public class CategoryWorker : BackgroundService
 
                 if (videos?.Videos == null || !videos.Videos.Any())
                 {
+                    RegistrarFalhas(categoryName, currentPage);
                     Console.WriteLine("Finalizou a buscar da url: " + url);
-                    shouldContinue = false;
+                    shouldContinue = DeveContinuar(categoryName, currentPage);
                     continue;
                 }
 
@@ -328,7 +353,21 @@ public class CategoryWorker : BackgroundService
         {
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<VideosHome>();
+            var videos = await response.Content.ReadFromJsonAsync<VideosHome>();
+            
+            if (videos?.Videos == null || !videos.Videos.Any())
+            {
+                Console.WriteLine($"******A Url: {url} não retornou vídeos - tentando em 30 segundos novamente");
+                Thread.Sleep(TimeSpan.FromSeconds(30));
+                videos = await FetchVideosFromApi(url);
+                
+                if (videos?.Videos == null || !videos.Videos.Any())
+                {
+                    Console.WriteLine($"--------A Url: {url} não retornou vídeos - Tentaremos na proxima execuçao do serviço");
+                }
+            }
+            
+            return videos;
         }
         catch
         {
