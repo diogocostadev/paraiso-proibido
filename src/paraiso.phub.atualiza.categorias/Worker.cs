@@ -2,6 +2,8 @@
 using System.Net.Http.Json;
 using Dapper;
 using Npgsql;
+using paraiso.models;
+using paraiso.models.Mapper;
 using paraiso.models.PHub;
 
 namespace paraiso.phub.atualiza.categorias;
@@ -181,6 +183,140 @@ public class CategoryWorker : BackgroundService
         }
     }
 
+    private async Task<int> ProcessVideoCategories(VideosHome videosHome, int categoryId)
+    {
+        int processedCount = 0;
+        
+        if (videosHome?.Videos == null) return processedCount;
+
+        using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        foreach (var videoItem in videosHome.Videos)
+        {
+            NpgsqlTransaction transaction = null;
+            try
+            {
+                transaction = await connection.BeginTransactionAsync();
+                var video = videoItem.Video.MapperToModel();
+
+                // Verifica se o vídeo existe
+                if (!await VideoExists(connection, video.Id))
+                {
+                    // Se não existe, cria o vídeo e seus relacionamentos
+                    await InsertVideo(connection, video);
+                    await InsertThumbnails(connection, video.Id, video.Miniaturas);
+                    await InsertTerms(connection, video.Id, video.Termos);
+                }
+
+                // Insere a relação vídeo-categoria
+                if (await InsertVideoCategory(connection, video.Id, categoryId))
+                {
+                    processedCount++;
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync();
+                }
+                _logger.LogError(ex, "Erro ao processar vídeo {VideoId} da categoria {CategoryId}", 
+                    videoItem.Video.VideoId, categoryId);
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
+        }
+
+        return processedCount;
+    }
+    
+    private async Task InsertVideo(NpgsqlConnection connection, paraiso.models.Video video)
+    {
+        const string sql = @"
+            INSERT INTO dev.videos 
+            (id, titulo, visualizacoes, avaliacao, url, data_adicionada, 
+             duracao_segundos, duracao_minutos, embed, site_id, 
+             default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src)
+            VALUES 
+            (@Id, @Titulo, @Visualizacoes, @Avaliacao, @Url, @DataAdicionada, 
+             @DuracaoSegundos, @DuracaoMinutos, @Embed, @SiteId, 
+             @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc)";
+            
+        await connection.ExecuteAsync(sql, video);
+    }
+
+    private async Task InsertThumbnails(NpgsqlConnection connection, string videoId, List<Miniatura> thumbnails)
+    {
+        if (thumbnails == null || !thumbnails.Any()) return;
+
+        const string insertSql = @"
+            INSERT INTO dev.miniaturas (video_id, tamanho, largura, altura, src, padrao)
+            VALUES (@VideoId, @Tamanho, @Largura, @Altura, @Src, @Padrao)";
+            
+        var thumbnailsWithVideoId = thumbnails.Select(t => new
+        {
+            VideoId = videoId,
+            t.Tamanho,
+            t.Largura,
+            t.Altura,
+            t.Src,
+            t.Padrao
+        });
+
+        await connection.ExecuteAsync(insertSql, thumbnailsWithVideoId);
+    }
+
+    private async Task InsertTerms(NpgsqlConnection connection, string videoId, List<Termo> terms)
+    {
+        if (terms == null || !terms.Any())
+            return;
+
+        // Insere novos termos em batch
+        const string insertTermsSql = @"
+            INSERT INTO dev.termos (termo)
+            SELECT unnest(@Termos)
+            ON CONFLICT (termo) DO NOTHING
+            RETURNING id, termo";
+
+        var termosArray = terms.Select(t => t.termo).ToArray();
+        var insertedTerms = await connection.QueryAsync<(int id, string termo)>(insertTermsSql, new { Termos = termosArray });
+        
+        // Pega os IDs dos termos que já existiam
+        const string getExistingTermsSql = @"
+            SELECT id, termo 
+            FROM dev.termos 
+            WHERE termo = ANY(@Termos)";
+
+        var existingTerms = (await connection.QueryAsync<(int id, string termo)>(getExistingTermsSql, new { Termos = termosArray }))
+            .ToDictionary(t => t.termo, t => t.id);
+
+        // Prepara as associações vídeo-termo
+        var videoTerms = terms.Select(t => new
+        {
+            VideoId = videoId,
+            TermoId = existingTerms[t.termo]
+        }).ToList();
+
+        // Insere todas as associações de uma vez
+        const string videoTermSql = @"
+            INSERT INTO dev.video_termos (video_id, termo_id)
+            SELECT unnest(@VideoIds), unnest(@TermoIds)";
+
+        await connection.ExecuteAsync(videoTermSql, new
+        {
+            VideoIds = videoTerms.Select(vt => vt.VideoId).ToArray(),
+            TermoIds = videoTerms.Select(vt => vt.TermoId).ToArray()
+        });
+    }
+    
     private async Task<VideosHome> FetchVideosFromApi(string url)
     {
         try
@@ -195,45 +331,7 @@ public class CategoryWorker : BackgroundService
         }
     }
 
-    private async Task<int> ProcessVideoCategories(VideosHome videosHome, int categoryId)
-    {
-        int processedCount = 0;
-        
-        if (videosHome?.Videos == null) return processedCount;
 
-        using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
-
-        foreach (var videoItem in videosHome.Videos)
-        {
-            try
-            {
-                // Primeiro verifica se o vídeo existe
-                if (await VideoExists(connection, videoItem.Video.VideoId))
-                {
-                    if (await InsertVideoCategory(connection, videoItem.Video.VideoId, categoryId))
-                    {
-                        processedCount++;
-                    }
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "Vídeo {VideoId} ainda não existe na base. Será processado na próxima execução.", 
-                        videoItem.Video.VideoId
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao processar vídeo {VideoId} da categoria {CategoryId}", 
-                    videoItem.Video.VideoId, categoryId);
-            }
-        }
-
-        return processedCount;
-    }
-    
     private async Task<bool> InsertVideoCategory(NpgsqlConnection connection, string videoId, int categoryId)
     {
         try

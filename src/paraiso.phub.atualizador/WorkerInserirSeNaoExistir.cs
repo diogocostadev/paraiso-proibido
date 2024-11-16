@@ -7,15 +7,14 @@ using paraiso.models.PHub;
 
 namespace WorkerService1;
 
-public class Worker : BackgroundService
+public class WorkerInserirSeNaoExistir : BackgroundService
 {
-    private readonly ILogger<Worker> _logger;
-
+    private readonly ILogger<WorkerInserirSeNaoExistir> _logger;
     private readonly HttpClient _httpClient;
     private readonly string _connectionString;
     private const string API_URL = "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=all&ordering=newest&page=";
 
-    public Worker(ILogger<Worker> logger)
+    public WorkerInserirSeNaoExistir(ILogger<WorkerInserirSeNaoExistir> logger)
     {
         Console.WriteLine("-=[Atualizador de vídeos iniciado]=-");
         _logger = logger;
@@ -29,42 +28,22 @@ public class Worker : BackgroundService
         {
             try
             {
-                _logger.LogInformation("Iniciando sincronização de vídeos: {time}", DateTimeOffset.Now);
-
-                var lastSyncDate =  new DateTime(1980, 1, 1); //await GetLastSyncDate();
-                if (lastSyncDate == DateTime.MinValue)
-                {
-                    _logger.LogInformation("Nenhum vídeo encontrado no banco. Iniciando primeira sincronização.");
-                }
-                else
-                {
-                    _logger.LogInformation("Última data de sincronização: {date}", lastSyncDate);
-                }
-                await SyncVideos(lastSyncDate);
+                _logger.LogInformation("Iniciando busca por novos vídeos: {time}", DateTimeOffset.Now);
+                await SyncVideos();
                 
-                // Aguarda 24 horas antes da próxima sincronização
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+                // Aguarda 1 hora antes da próxima sincronização
+                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro durante a sincronização de vídeos");
+                _logger.LogError(ex, "Erro durante a busca por novos vídeos");
                 // Aguarda 1 hora em caso de erro antes de tentar novamente
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
         }
     }
-
-    private async Task<DateTime> GetLastSyncDate()
-    {
-        using var connection = new NpgsqlConnection(_connectionString);
-        const string sql = @"
-            SELECT COALESCE(MAX(data_adicionada), '0001-01-01'::timestamp) 
-            FROM dev.videos";
-        
-        return await connection.QuerySingleAsync<DateTime>(sql);
-    }
     
-    private async Task SyncVideos(DateTime lastSyncDate)
+    private async Task SyncVideos()
     {
         int currentPage = 1;
         bool shouldContinue = true;
@@ -78,7 +57,7 @@ public class Worker : BackgroundService
                 break;
             }
             
-            shouldContinue = await ProcessVideos(videos, lastSyncDate, currentPage);
+            shouldContinue = await ProcessVideos(videos, currentPage);
             
             if (shouldContinue)
             {
@@ -105,7 +84,6 @@ public class Worker : BackgroundService
             }
 
             return result;
-            
         }
         catch (Exception ex)
         {
@@ -114,7 +92,7 @@ public class Worker : BackgroundService
         }
     }
 
-    private async Task<bool> ProcessVideos(VideosHome videosHome, DateTime lastSyncDate, int currentPage)
+    private async Task<bool> ProcessVideos(VideosHome videosHome, int currentPage)
     {
         if (videosHome == null || videosHome.Videos == null || !videosHome.Videos.Any())
         {
@@ -125,13 +103,11 @@ public class Worker : BackgroundService
         int monitorId = await InserirMonitoramentoCarga(currentPage);
         int videosProcessados = 0;
         int videosNovos = 0;
-        int videosAtualizados = 0;
         int erros = 0;
         string mensagemErro = null;
 
         using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
-        bool shouldContinue = true;
 
         try
         {
@@ -141,29 +117,16 @@ public class Worker : BackgroundService
                 try
                 {
                     var video = videoItem.Video.MapperToModel();
-
-                    if (video.DataAdicionada <= lastSyncDate)
-                    {
-                        _logger.LogInformation("Encontrado vídeo mais antigo que a última sincronização: {VideoId}", video.Id);
-                        shouldContinue = false;
-                        break;
-                    }
-
+                    
                     transaction = await connection.BeginTransactionAsync();
 
-                    if (await VideoExists(connection, video.Id))
-                    {
-                        await UpdateVideo(connection, video);
-                        videosAtualizados++;
-                    }
-                    else
+                    if (!await VideoExists(connection, video.Id))
                     {
                         await InsertVideo(connection, video);
+                        await InsertThumbnails(connection, video.Id, video.Miniaturas);
+                        await InsertTerms(connection, video.Id, video.Termos);
                         videosNovos++;
                     }
-
-                    await UpdateThumbnails(connection, video.Id, video.Miniaturas);
-                    await UpdateTerms(connection, video.Id, video.Termos);
 
                     await transaction.CommitAsync();
                     videosProcessados++;
@@ -197,11 +160,11 @@ public class Worker : BackgroundService
         finally
         {
             await AtualizarMonitoramentoCarga(monitorId, videosProcessados, videosNovos,
-                videosAtualizados, erros, mensagemErro);
+                0, erros, mensagemErro);
             await AtualizarMetricasSync();
         }
 
-        return shouldContinue;
+        return true; // Continua sempre buscando novas páginas
     }
 
     private async Task<bool> VideoExists(NpgsqlConnection connection, string videoId)
@@ -209,28 +172,6 @@ public class Worker : BackgroundService
         const string sql = "SELECT COUNT(1) FROM dev.videos WHERE id = @Id";
         var count = await connection.ExecuteScalarAsync<int>(sql, new { Id = videoId });
         return count > 0;
-    }
-
-    private async Task UpdateVideo(NpgsqlConnection connection, paraiso.models.Video video)
-    {
-        const string sql = @"
-            UPDATE dev.videos 
-            SET titulo = @Titulo, 
-                visualizacoes = @Visualizacoes, 
-                avaliacao = @Avaliacao, 
-                url = @Url, 
-                data_adicionada = @DataAdicionada, 
-                duracao_segundos = @DuracaoSegundos, 
-                duracao_minutos = @DuracaoMinutos, 
-                embed = @Embed, 
-                site_id = @SiteId, 
-                default_thumb_size = @DefaultThumbSize, 
-                default_thumb_width = @DefaultThumbWidth, 
-                default_thumb_height = @DefaultThumbHeight, 
-                default_thumb_src = @DefaultThumbSrc
-            WHERE id = @Id";
-            
-        await connection.ExecuteAsync(sql, video);
     }
 
     private async Task InsertVideo(NpgsqlConnection connection, paraiso.models.Video video)
@@ -248,13 +189,8 @@ public class Worker : BackgroundService
         await connection.ExecuteAsync(sql, video);
     }
 
-    private async Task UpdateThumbnails(NpgsqlConnection connection, string videoId, List<Miniatura> thumbnails)
+    private async Task InsertThumbnails(NpgsqlConnection connection, string videoId, List<Miniatura> thumbnails)
     {
-        // Remove miniaturas existentes
-        const string deleteSql = "DELETE FROM dev.miniaturas WHERE video_id = @VideoId";
-        await connection.ExecuteAsync(deleteSql, new { VideoId = videoId });
-
-        // Insere novas miniaturas
         const string insertSql = @"
             INSERT INTO dev.miniaturas (video_id, tamanho, largura, altura, src, padrao)
             VALUES (@VideoId, @Tamanho, @Largura, @Altura, @Src, @Padrao)";
@@ -262,47 +198,29 @@ public class Worker : BackgroundService
         await connection.ExecuteAsync(insertSql, thumbnails);
     }
 
-    private async Task UpdateTerms(NpgsqlConnection connection, string videoId, List<Termo> terms)
+    private async Task InsertTerms(NpgsqlConnection connection, string videoId, List<Termo> terms)
     {
         if (terms == null || !terms.Any())
             return;
 
-        // Remove associações existentes primeiro
-        const string deleteVideoTermsSql = "DELETE FROM dev.video_termos WHERE video_id = @VideoId";
-        await connection.ExecuteAsync(deleteVideoTermsSql, new { VideoId = videoId });
-
-        // Pega todos os termos existentes de uma vez para evitar múltiplas queries
-        const string getExistingTermsSql = @"
-        SELECT id, termo 
-        FROM dev.termos 
-        WHERE termo = ANY(@Termos)";
-
-        var termosArray = terms.Select(t => t.termo).ToArray();
-        var existingTerms =
-            (await connection.QueryAsync<(int id, string termo)>(getExistingTermsSql, new { Termos = termosArray }))
-            .ToDictionary(t => t.termo, t => t.id);
-
-        // Identifica termos que precisam ser inseridos
-        var newTerms = terms.Where(t => !existingTerms.ContainsKey(t.termo))
-            .Select(t => t.termo)
-            .ToList();
-
-        if (newTerms.Any())
-        {
-            // Insere novos termos em batch
-            const string insertTermsSql = @"
+        // Insere novos termos em batch
+        const string insertTermsSql = @"
             INSERT INTO dev.termos (termo)
             SELECT unnest(@Termos)
             ON CONFLICT (termo) DO NOTHING
             RETURNING id, termo";
 
-            var insertedTerms =
-                await connection.QueryAsync<(int id, string termo)>(insertTermsSql, new { Termos = newTerms });
-            foreach (var term in insertedTerms)
-            {
-                existingTerms[term.termo] = term.id;
-            }
-        }
+        var termosArray = terms.Select(t => t.termo).ToArray();
+        var insertedTerms = await connection.QueryAsync<(int id, string termo)>(insertTermsSql, new { Termos = termosArray });
+        
+        // Pega os IDs dos termos que já existiam
+        const string getExistingTermsSql = @"
+            SELECT id, termo 
+            FROM dev.termos 
+            WHERE termo = ANY(@Termos)";
+
+        var existingTerms = (await connection.QueryAsync<(int id, string termo)>(getExistingTermsSql, new { Termos = termosArray }))
+            .ToDictionary(t => t.termo, t => t.id);
 
         // Prepara as associações vídeo-termo
         var videoTerms = terms.Select(t => new
@@ -313,8 +231,8 @@ public class Worker : BackgroundService
 
         // Insere todas as associações de uma vez
         const string videoTermSql = @"
-        INSERT INTO dev.video_termos (video_id, termo_id)
-        SELECT unnest(@VideoIds), unnest(@TermoIds)";
+            INSERT INTO dev.video_termos (video_id, termo_id)
+            SELECT unnest(@VideoIds), unnest(@TermoIds)";
 
         await connection.ExecuteAsync(videoTermSql, new
         {
@@ -330,7 +248,7 @@ public class Worker : BackgroundService
             INSERT INTO dev.monitor_carga_videos 
                 (pagina, data_inicio, status, quem)
             VALUES 
-                (@Pagina, @DataInicio, @Status, 'worker-1x')
+                (@Pagina, @DataInicio, @Status, 'worker-inserir')
             RETURNING id";
 
         return await connection.QuerySingleAsync<int>(sql, new
