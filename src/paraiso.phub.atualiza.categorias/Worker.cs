@@ -164,7 +164,7 @@ public class CategoryWorker : BackgroundService
 
                 if (videos?.Videos == null || !videos.Videos.Any())
                 {
-                    Console.WriteLine("Finalizou a buscar de categoria: " + categoryName);
+                    Console.WriteLine("Finalizou a buscar da url: " + url);
                     shouldContinue = false;
                     continue;
                 }
