@@ -51,7 +51,7 @@ public class CategoryWorker : BackgroundService
         {
             try
             {
-                _logger.LogInformation("-=[Iniciando resgate de categorias e vídeos - v0.0.3]=-");
+                _logger.LogInformation("-=[Iniciando resgate de categorias e vídeos - v0.0.4]=-");
 
                 await using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync(stoppingToken);
