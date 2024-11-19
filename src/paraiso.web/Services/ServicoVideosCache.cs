@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Distributed;
 using StackExchange.Redis;
 using Npgsql;
-using System.Text.Json;
 using Polly;
 using Polly.CircuitBreaker;
 using System.IO.Compression;
 using System.Text;
+using Newtonsoft.Json;
 using paraiso.web.Models;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace paraiso.web.Services;
 
@@ -24,7 +25,7 @@ public class ServicoVideosCache
     private bool _usarCompressao = true;
     private int _tempoExpiracaoMinutos = 5;
     private int _tempoSlidingMinutos = 1;
-        
+
     public ServicoVideosCache(
         IDistributedCache cache,
         ILogger<ServicoVideosCache> logger,
@@ -44,12 +45,10 @@ public class ServicoVideosCache
                 durationOfBreak: TimeSpan.FromSeconds(30),
                 onBreak: (ex, duration) =>
                 {
-                    _logger.LogWarning($"Circuit Breaker aberto por {duration.TotalSeconds} segundos devido a: {ex.Message}");
+                    _logger.LogWarning(
+                        $"Circuit Breaker aberto por {duration.TotalSeconds} segundos devido a: {ex.Message}");
                 },
-                onReset: () =>
-                {
-                    _logger.LogInformation("Circuit Breaker resetado");
-                });
+                onReset: () => { _logger.LogInformation("Circuit Breaker resetado"); });
 
         // Iniciar Cache Warming
         IniciarCacheWarming();
@@ -104,7 +103,7 @@ public class ServicoVideosCache
             throw;
         }
     }
-        
+
     public async Task<VideoBase> ObterVideoPorIdAsync(string id, int page)
     {
         try
@@ -128,7 +127,7 @@ public class ServicoVideosCache
                 }
             }
 
-                // Se não encontrou no cache, busca diretamente no banco
+            // Se não encontrou no cache, busca diretamente no banco
             return await _circuitBreaker.ExecuteAsync(async () =>
             {
                 using var conexao = new NpgsqlConnection(_stringConexao);
@@ -173,7 +172,7 @@ public class ServicoVideosCache
     }
 
     #region "--=[Métodos para deixar dados em cache]=--"
-    
+
     private void IniciarCacheWarming()
     {
         _cacheWarmingTimer = new Timer(
@@ -183,12 +182,13 @@ public class ServicoVideosCache
             TimeSpan.FromMinutes(4) // Executa a cada 4 minutos
         );
     }
+
     private async Task AquecerCache()
     {
         try
         {
             _logger.LogInformation("Iniciando aquecimento do cache...");
-            
+
             // Pré-carrega as primeiras 5 páginas
             for (int i = 1; i <= 5; i++)
             {
@@ -204,6 +204,7 @@ public class ServicoVideosCache
             _logger.LogError(ex, "Erro durante o aquecimento do cache");
         }
     }
+
     private async Task ArmazenarEmCache<T>(string chave, T dados)
     {
         var jsonDados = JsonSerializer.Serialize(dados);
@@ -219,6 +220,7 @@ public class ServicoVideosCache
 
         await _cache.SetAsync(chave, dadosComprimidos, opcoesCache);
     }
+
     private byte[] ComprimirDados(byte[] dados)
     {
         using var outputStream = new MemoryStream();
@@ -226,8 +228,10 @@ public class ServicoVideosCache
         {
             gzip.Write(dados, 0, dados.Length);
         }
+
         return outputStream.ToArray();
     }
+
     private byte[] DescomprimirDados(byte[] dadosComprimidos)
     {
         using var inputStream = new MemoryStream(dadosComprimidos);
@@ -236,16 +240,17 @@ public class ServicoVideosCache
         {
             gzip.CopyTo(outputStream);
         }
+
         return outputStream.ToArray();
     }
-    
+
     #endregion
-    
+
     //Listagem normal
     public async Task<ResultadoPaginado<VideoBase>> ObterVideosAsync(int pagina = 1, int tamanhoPagina = 100)
     {
         string chaveCache = $"videos_pagina_{pagina}_{tamanhoPagina}";
-        
+
         try
         {
             // Tenta obter do cache
@@ -255,7 +260,7 @@ public class ServicoVideosCache
                 var dadosDescomprimidos = _usarCompressao
                     ? DescomprimirDados(dadosCache)
                     : dadosCache;
-                
+
                 return JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(
                     Encoding.UTF8.GetString(dadosDescomprimidos));
             }
@@ -274,24 +279,49 @@ public class ServicoVideosCache
             throw;
         }
     }
+
     private async Task<ResultadoPaginado<VideoBase>> ObterVideosPaginadosDoBanco(int pagina, int tamanhoPagina)
     {
         using var conexao = new NpgsqlConnection(_stringConexao);
         await conexao.OpenAsync();
 
         var offset = (pagina - 1) * tamanhoPagina;
-        
+
         // Consulta para obter o total de registros
         var consultaTotal = "SELECT COUNT(*) FROM dev.videos";
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
         var total = Convert.ToInt32(await comandoTotal.ExecuteScalarAsync());
 
-        // Consulta paginada
         var consultaVideos = @"
-            select id, titulo, duracao_segundos, embed, default_thumb_size, default_thumb_src from videos.dev.videos
-            where ativo = true
-            ORDER BY data_adicionada DESC
-            OFFSET @Offset LIMIT @TamanhoPagina";
+            SELECT 
+                vi.id, 
+                vi.titulo, 
+                vi.duracao_segundos, 
+                vi.embed, 
+                vi.default_thumb_size, 
+                vi.default_thumb_src, 
+                vi.duracao_minutos AS DuracaoMinutos,
+                jsonb_agg(
+                    jsonb_build_object(
+                        'id', mi.id,
+                        'tamanho', mi.tamanho,
+                        'src', mi.src,
+                        'altura', mi.altura,
+                        'largura', mi.largura
+                                )
+                            ) AS miniaturas
+                        FROM 
+                            dev.videos vi
+                        LEFT JOIN 
+                            dev.miniaturas mi 
+                            ON mi.video_id = vi.id 
+                            AND mi.tamanho = vi.default_thumb_size 
+                        WHERE 
+                            vi.ativo = true
+                        GROUP BY 
+                            vi.id
+                        ORDER BY vi.data_adicionada DESC
+                        OFFSET @Offset LIMIT @TamanhoPagina";
 
         var videos = new List<VideoBase>();
         using (var comando = new NpgsqlCommand(consultaVideos, conexao))
@@ -299,19 +329,35 @@ public class ServicoVideosCache
             comando.Parameters.AddWithValue("@Offset", offset);
             comando.Parameters.AddWithValue("@TamanhoPagina", tamanhoPagina);
 
-            using var leitor = await comando.ExecuteReaderAsync();
-            while (await leitor.ReadAsync())
+            try
             {
-                videos.Add(new VideoBase
+                using var leitor = await comando.ExecuteReaderAsync();
+                while (await leitor.ReadAsync())
                 {
-                    Id = leitor.GetString(0),
-                    Titulo = leitor.GetString(1),
-                    DuracaoSegundos = leitor.GetInt32(2),
-                    Embed = leitor.GetString(3),
-                    DefaultThumbSize = leitor.GetString(4),
-                    DefaultThumbSrc = leitor.GetString(5)
-                });
+                    var miniaturasJson = leitor["miniaturas"] as string;
+                    var miniaturas = string.IsNullOrEmpty(miniaturasJson)
+                        ? new List<Miniaturas>()
+                        : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
+
+                    videos.Add(new VideoBase
+                    {
+                        Id = leitor.GetString(0),
+                        Titulo = leitor.GetString(1),
+                        DuracaoSegundos = leitor.GetInt32(2),
+                        Embed = leitor.GetString(3),
+                        DefaultThumbSize = leitor.GetString(4),
+                        DefaultThumbSrc = leitor.GetString(5),
+                        DuracaoMinutos = leitor.GetString(6),
+                        Miniaturas = miniaturas
+                    });
+                }
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+
         }
 
         return new ResultadoPaginado<VideoBase>
@@ -325,10 +371,11 @@ public class ServicoVideosCache
     }
 
     //Busca por termo
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1, int tamanhoPagina = 100)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1,
+        int tamanhoPagina = 100)
     {
         string chaveCache = $"videos_pagina_{termo}{pagina}_{tamanhoPagina}";
-        
+
         try
         {
             // Tenta obter do cache
@@ -338,7 +385,7 @@ public class ServicoVideosCache
                 var dadosDescomprimidos = _usarCompressao
                     ? DescomprimirDados(dadosCache)
                     : dadosCache;
-                
+
                 return JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(
                     Encoding.UTF8.GetString(dadosDescomprimidos));
             }
@@ -357,7 +404,9 @@ public class ServicoVideosCache
             throw;
         }
     }
-    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina, int tamanhoPagina)
+
+    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina,
+        int tamanhoPagina)
     {
         using var conexao = new NpgsqlConnection(_stringConexao);
         await conexao.OpenAsync();
@@ -366,35 +415,56 @@ public class ServicoVideosCache
 
         // Consulta para obter o total de registros
         var consultaTotal = @"
-            WITH unique_videos AS (
-                SELECT DISTINCT vi.id
-                FROM videos.dev.videos vi
-                INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
-                INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
-                WHERE te.termo LIKE @Termo
-            )
-            SELECT count(vi.*)
+        WITH unique_videos AS (
+            SELECT DISTINCT vi.id
             FROM videos.dev.videos vi
-            INNER JOIN unique_videos uv ON vi.id = uv.id";
+            INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
+            INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
+            WHERE te.termo LIKE @Termo
+        )
+        SELECT count(vi.*)
+        FROM videos.dev.videos vi
+        INNER JOIN unique_videos uv ON vi.id = uv.id";
 
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
         comandoTotal.Parameters.AddWithValue("@Termo", $"%{termo}%");
         var total = Convert.ToInt32(await comandoTotal.ExecuteScalarAsync());
 
-        // Consulta paginada
+        // Consulta paginada com miniaturas agregadas
         var consultaVideos = @"
-            WITH unique_videos AS (
-                SELECT DISTINCT vi.id
-                FROM videos.dev.videos vi
-                INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
-                INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
-                WHERE te.termo LIKE @Termo
-            )
-            SELECT vi.id, vi.titulo, vi.duracao_segundos, vi.embed, vi.default_thumb_size, vi.default_thumb_src
+        WITH unique_videos AS (
+            SELECT DISTINCT vi.id
             FROM videos.dev.videos vi
-            INNER JOIN unique_videos uv ON vi.id = uv.id
-            ORDER BY vi.data_adicionada DESC
-            OFFSET @Offset LIMIT @TamanhoPagina";
+            INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
+            INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
+            WHERE te.termo LIKE @Termo
+        )
+        SELECT 
+            vi.id, 
+            vi.titulo, 
+            vi.duracao_segundos, 
+            vi.embed, 
+            vi.default_thumb_size, 
+            vi.default_thumb_src, 
+            vi.duracao_minutos AS DuracaoMinutos,
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', mi.id,
+                    'tamanho', mi.tamanho,
+                    'src', mi.src,
+                    'altura', mi.altura,
+                    'largura', mi.largura
+                )
+            ) AS miniaturas
+        FROM 
+            videos.dev.videos vi
+        LEFT JOIN 
+            videos.dev.miniaturas mi ON mi.video_id = vi.id AND mi.tamanho = vi.default_thumb_size
+        INNER JOIN unique_videos uv ON vi.id = uv.id
+        WHERE vi.ativo = true
+        GROUP BY vi.id
+        ORDER BY vi.data_adicionada DESC
+        OFFSET @Offset LIMIT @TamanhoPagina";
 
         var videos = new List<VideoBase>();
         using (var comando = new NpgsqlCommand(consultaVideos, conexao))
@@ -406,6 +476,11 @@ public class ServicoVideosCache
             using var leitor = await comando.ExecuteReaderAsync();
             while (await leitor.ReadAsync())
             {
+                var miniaturasJson = leitor["miniaturas"] as string;
+                var miniaturas = string.IsNullOrEmpty(miniaturasJson)
+                    ? new List<Miniaturas>()
+                    : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
+
                 videos.Add(new VideoBase
                 {
                     Id = leitor.GetString(0),
@@ -413,7 +488,9 @@ public class ServicoVideosCache
                     DuracaoSegundos = leitor.GetInt32(2),
                     Embed = leitor.GetString(3),
                     DefaultThumbSize = leitor.GetString(4),
-                    DefaultThumbSrc = leitor.GetString(5)
+                    DefaultThumbSrc = leitor.GetString(5),
+                    DuracaoMinutos = leitor.GetString(6),
+                    Miniaturas = miniaturas
                 });
             }
         }
@@ -427,13 +504,13 @@ public class ServicoVideosCache
             TotalPaginas = (int)Math.Ceiling(total / (double)tamanhoPagina)
         };
     }
-    
-    
+
     //Listagem por categoria
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaAsync(int categoriaId, int pagina = 1, int tamanhoPagina = 100)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaAsync(int categoriaId, int pagina = 1,
+        int tamanhoPagina = 100)
     {
         string chaveCache = $"videos_categoria_{categoriaId}{pagina}_{tamanhoPagina}";
-        
+
         try
         {
             // Tenta obter do cache
@@ -443,7 +520,7 @@ public class ServicoVideosCache
                 var dadosDescomprimidos = _usarCompressao
                     ? DescomprimirDados(dadosCache)
                     : dadosCache;
-                
+
                 return JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(
                     Encoding.UTF8.GetString(dadosDescomprimidos));
             }
@@ -462,8 +539,9 @@ public class ServicoVideosCache
             throw;
         }
     }
-    
-    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaPaginadosDoBanco(int categoriaId, int pagina, int tamanhoPagina)
+
+    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaPaginadosDoBanco(int categoriaId,
+        int pagina, int tamanhoPagina)
     {
         using var conexao = new NpgsqlConnection(_stringConexao);
         await conexao.OpenAsync();
@@ -472,33 +550,54 @@ public class ServicoVideosCache
 
         // Consulta para obter o total de registros
         var consultaTotal = @"
-            WITH unique_videos AS (
-                    SELECT DISTINCT vi.id
-                    FROM dev.videos vi
-                    INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
-                    WHERE vc.categoria_id = @CategoriaId
-            )
-            SELECT count(vi.*)
+        WITH unique_videos AS (
+            SELECT DISTINCT vi.id
             FROM dev.videos vi
-            INNER JOIN unique_videos uv ON vi.id = uv.id";
+            INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
+            WHERE vc.categoria_id = @CategoriaId
+        )
+        SELECT count(vi.*)
+        FROM dev.videos vi
+        INNER JOIN unique_videos uv ON vi.id = uv.id";
 
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
         comandoTotal.Parameters.AddWithValue("@CategoriaId", categoriaId);
         var total = Convert.ToInt32(await comandoTotal.ExecuteScalarAsync());
 
-        // Consulta paginada
+        // Consulta paginada com miniaturas agregadas
         var consultaVideos = @"
-                WITH unique_videos AS (
-                    SELECT DISTINCT vi.id
-                    FROM videos.dev.videos vi
-                    INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
-                    WHERE vc.categoria_id = @CategoriaId
+        WITH unique_videos AS (
+            SELECT DISTINCT vi.id
+            FROM videos.dev.videos vi
+            INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
+            WHERE vc.categoria_id = @CategoriaId
+        )
+        SELECT 
+            vi.id, 
+            vi.titulo, 
+            vi.duracao_segundos, 
+            vi.embed, 
+            vi.default_thumb_size, 
+            vi.default_thumb_src, 
+            vi.duracao_minutos AS DuracaoMinutos,
+            jsonb_agg(
+                jsonb_build_object(
+                    'id', mi.id,
+                    'tamanho', mi.tamanho,
+                    'src', mi.src,
+                    'altura', mi.altura,
+                    'largura', mi.largura
                 )
-                SELECT vi.id, vi.titulo, vi.duracao_segundos, vi.embed, vi.default_thumb_size, vi.default_thumb_src
-                FROM dev.videos vi
-                INNER JOIN unique_videos uv ON vi.id = uv.id
-                ORDER BY vi.data_adicionada DESC
-                OFFSET @Offset LIMIT @TamanhoPagina";
+            ) AS miniaturas
+        FROM 
+            dev.videos vi
+        LEFT JOIN 
+            dev.miniaturas mi ON mi.video_id = vi.id AND mi.tamanho = vi.default_thumb_size
+        INNER JOIN unique_videos uv ON vi.id = uv.id
+        WHERE vi.ativo = true
+        GROUP BY vi.id
+        ORDER BY vi.data_adicionada DESC
+        OFFSET @Offset LIMIT @TamanhoPagina";
 
         var videos = new List<VideoBase>();
         using (var comando = new NpgsqlCommand(consultaVideos, conexao))
@@ -510,6 +609,11 @@ public class ServicoVideosCache
             using var leitor = await comando.ExecuteReaderAsync();
             while (await leitor.ReadAsync())
             {
+                var miniaturasJson = leitor["miniaturas"] as string;
+                var miniaturas = string.IsNullOrEmpty(miniaturasJson)
+                    ? new List<Miniaturas>()
+                    : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
+
                 videos.Add(new VideoBase
                 {
                     Id = leitor.GetString(0),
@@ -517,7 +621,9 @@ public class ServicoVideosCache
                     DuracaoSegundos = leitor.GetInt32(2),
                     Embed = leitor.GetString(3),
                     DefaultThumbSize = leitor.GetString(4),
-                    DefaultThumbSrc = leitor.GetString(5)
+                    DefaultThumbSrc = leitor.GetString(5),
+                    DuracaoMinutos = leitor.GetString(6),
+                    Miniaturas = miniaturas
                 });
             }
         }
@@ -531,4 +637,5 @@ public class ServicoVideosCache
             TotalPaginas = (int)Math.Ceiling(total / (double)tamanhoPagina)
         };
     }
+
 }

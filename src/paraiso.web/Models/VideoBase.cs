@@ -12,6 +12,8 @@ public class VideoBase
     public string DefaultThumbSize { get; set; } = string.Empty;
     
     public string DefaultThumbSrc { get; set; } = string.Empty;
-}
 
-//id, titulo, duracao_segundos, embed, default_thumb_size, default_thumb_src
+    public string? DuracaoMinutos { get; set; }
+
+    public List<Miniaturas> Miniaturas { get; set; } = new List<Miniaturas>();
+}

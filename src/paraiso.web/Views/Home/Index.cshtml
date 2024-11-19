@@ -11,15 +11,13 @@
             foreach (var video in videosPagina)
             {
                 <div class="video-item">
-
-                    @* <img src="@video.video.default_thumb" alt="@video.video.title" class="video-thumb" *@
-                    @*      data-thumbs="@string.Join(",", video.video.thumbs.Select(t => t.src))"/> *@
                     
                     <a asp-action="V" 
                        asp-route-id="@video.Id"
-                       asp-route-p="@Model.PaginaAtual"
-                    >
-                        <img src="@video.DefaultThumbSrc" alt="@video.Titulo" class="video-thumb" />
+                       asp-route-p="@Model.PaginaAtual">
+                        <img src="@video.DefaultThumbSrc" alt="@video.Titulo" class="video-thumb"
+                             data-thumbs="@string.Join(",", @video.Miniaturas.Select(t => t.Src))" />
+                        <div class="video-time">@video.DuracaoMinutos</div>
                         <p>@video.Titulo</p>
                     </a>
                 </div>
