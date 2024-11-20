@@ -4,13 +4,75 @@ ViewBag.Title = Model.Titulo;
 Layout = "_Layout";
 }
 
+@* <div class="container1"> *@
+@*     <div class="video-section1"> *@
+@*         <div class="video-wrapper1"> *@
+@*             <iframe src="@Model.Embed" allowfullscreen></iframe> *@
+@*         </div> *@
+@*         <h1 class="video-title1">@Model.Titulo</h1> *@
+@*         <p class="video-description1">@Model.DuracaoSegundos</p> *@
+@*     </div> *@
+@* *@
+@*     <aside class="ads-section1"> *@
+@*         <div class="ad1"> *@
+@*             <img src="/api/placeholder/300/250" alt="Anúncio 1"> *@
+@*         </div> *@
+@*         <div class="ad1"> *@
+@*             <img src="/api/placeholder/300/250" alt="Anúncio 2"> *@
+@*         </div> *@
+@*         <div class="ad1"> *@
+@*             <img src="/api/placeholder/300/250" alt="Anúncio 3"> *@
+@*         </div> *@
+@*     </aside> *@
+@* </div> *@
+
+
+
 <div class="container1">
     <div class="video-section1">
         <div class="video-wrapper1">
             <iframe src="@Model.Embed" allowfullscreen></iframe>
         </div>
         <h1 class="video-title1">@Model.Titulo</h1>
+        
+        @* Tags Section *@
+        <div class="tags-section">
+            @if (Model.Termos != null)
+            {
+                foreach (var tag in Model.Termos)
+                {
+                    <a href="@tag.Id" class="video-tag">@tag.termo</a>
+                }
+            }
+        </div>
+        
         <p class="video-description1">@Model.DuracaoSegundos</p>
+
+        @* Related Videos Section *@
+        <div class="related-videos-section">
+            <h2 class="related-videos-title">Vídeos Relacionados</h2>
+            <div class="videos">
+                @if (Model.VideosRelacionados != null)
+                {
+                    foreach (var video in Model.VideosRelacionados)
+                    {
+                        <div class="video-item">
+                            <a href="@Url.Action("V", "Home", new { id = video.Id })">
+                                <img src="@video.DefaultThumbSrc" alt="@video.Titulo" class="video-thumb"
+                                     data-thumbs="@string.Join(",", video.Miniaturas.Select(t => t.Src))" />
+                                <span class="video-time">@video.DuracaoMinutos</span>
+                                <p>@video.Titulo</p>
+                            </a>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        @* Bottom Advertisement *@
+        <div class="bottom-ad">
+            <img src="/api/placeholder/970/100" alt="Anúncio inferior">
+        </div>
     </div>
 
     <aside class="ads-section1">
@@ -25,3 +87,24 @@ Layout = "_Layout";
         </div>
     </aside>
 </div>
+
+
+<script>
+    document.querySelectorAll('.video-thumb').forEach(function(thumb) {
+        const thumbsArray = thumb.getAttribute('data-thumbs').split(',');
+        let index = 0;
+        let interval;
+
+        thumb.addEventListener('mouseenter', function() {
+            interval = setInterval(function() {
+                thumb.src = thumbsArray[index];
+                index = (index + 1) % thumbsArray.length;
+            }, 1000);
+        });
+
+        thumb.addEventListener('mouseleave', function() {
+            clearInterval(interval);
+            thumb.src = thumbsArray[0];
+        });
+    });
+</script>

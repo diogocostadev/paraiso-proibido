@@ -1,18 +1,48 @@
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using paraiso.web.Middleware;
+using paraiso.web.Robo;
 using paraiso.web.Services;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Adiciona o Distributed Cache (usando Redis, por exemplo)
+
+var redisOptions = new ConfigurationOptions
+{
+    EndPoints = { "212.56.47.25:6379" },
+    Password = "D1d4C0st4S4nt0s",
+    ConnectTimeout = 5000,
+    SyncTimeout = 5000,
+    AsyncTimeout = 5000,
+    ConnectRetry = 3,
+    DefaultDatabase = 0,
+    AbortOnConnectFail = false,
+    AllowAdmin = true,
+    ClientName = "CacheWarming",
+    KeepAlive = 60,
+    ReconnectRetryPolicy = new LinearRetry(1000)
+};
+
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = "212.56.47.25:6379,password=D1d4C0st4S4nt0s,abortConnect=false,ssl=false";
-    options.InstanceName = "RedisCacheInstance";
+    options.ConfigurationOptions = redisOptions;
+    options.InstanceName = "VideoCache_";
 });
+
+builder.Services.AddMemoryCache();
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<ServicoVideosCache>();
+
+if (builder.Configuration["robos:ativar"] == "true")
+{
+    builder.Services.AddSingleton<ServicoVideosCacheRobo>();
+}
+
+builder.Services.AddSingleton<ServicoVideosCacheRobo>();
+
+builder.Services.AddHostedService<CacheWarmingService>();
 
 var app = builder.Build();
 

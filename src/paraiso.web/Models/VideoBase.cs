@@ -16,4 +16,8 @@ public class VideoBase
     public string? DuracaoMinutos { get; set; }
 
     public List<Miniaturas> Miniaturas { get; set; } = new List<Miniaturas>();
+    
+    public List<Termos> Termos { get; set; }
+    
+    public List<VideoBase> VideosRelacionados { get; set; } = new List<VideoBase>();
 }

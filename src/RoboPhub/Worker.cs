@@ -1,13 +1,8 @@
 using System.Net.Http.Json;
 using System.Text;
-using Dapper;
 using Newtonsoft.Json;
-using Npgsql;
-using paraiso.models;
 using paraiso.models.PHub;
 using RabbitMQ.Client;
-using RoboPhub.Mapper;
-using Video = paraiso.models.PHub.Video;
 
 namespace RoboPhub;
 

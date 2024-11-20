@@ -1,7 +1,3 @@
-using System.Runtime.CompilerServices;
-using paraiso.models;
-using paraiso.models.PHub;
-
 namespace paraiso.models.Mapper;
 
 public static class Video

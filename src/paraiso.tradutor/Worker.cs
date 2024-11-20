@@ -1,6 +1,5 @@
 using AutoGen.Core;
 using AutoGen.Ollama;
-using AutoGen.Ollama.Extension;
 using Npgsql;
 
 namespace paraiso.tradutor;

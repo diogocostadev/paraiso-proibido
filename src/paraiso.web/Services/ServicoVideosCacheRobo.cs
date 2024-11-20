@@ -12,37 +12,30 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace paraiso.web.Services;
 
-public class ServicoVideosCache
+public class ServicoVideosCacheRobo
 {
     private readonly IMemoryCache _memoryCache;
     private readonly TimeSpan _memoryCacheDuration = TimeSpan.FromSeconds(30);
 
     private readonly IDistributedCache _cache;
-    private readonly ILogger<ServicoVideosCache> _logger;
+    private readonly ILogger<ServicoVideosCacheRobo> _logger;
     private readonly string _stringConexao;
     private readonly AsyncCircuitBreakerPolicy _circuitBreaker;
-    private readonly IHostApplicationLifetime _applicationLifetime;
-    private Timer _cacheWarmingTimer;
 
     private bool _usarCompressao = true;
-    private int _tempoExpiracaoMinutos = 5;
+    private int _tempoExpiracaoMinutos = 10;
     private int _tempoSlidingMinutos = 1;
 
     public Func<ResultadoPaginado<VideoBase>, Task> _onPaginaCacheada;
     
-    public ServicoVideosCache(
-        IDistributedCache cache,
-        ILogger<ServicoVideosCache> logger,
-        IConfiguration configuration,
-        IHostApplicationLifetime applicationLifetime, IMemoryCache memoryCache)
+    public ServicoVideosCacheRobo(IDistributedCache cache, ILogger<ServicoVideosCacheRobo> logger, IMemoryCache memoryCache)
     {
         _cache = cache;
         _memoryCache = memoryCache;
         
         _logger = logger;
-        _stringConexao =
-            "Host=212.56.47.25;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos;Maximum Pool Size=50;Timeout=30;Command Timeout=30";
-        _applicationLifetime = applicationLifetime;
+        _stringConexao = 
+            "Host=212.56.47.25;Username=dbotrobo;Password=P4r41s0Pr01b1d0;Database=videos;Maximum Pool Size=50;Timeout=30;Command Timeout=30;SSL Mode=Require;Trust Server Certificate=true;";
 
         // Configuração do Circuit Breaker
         _circuitBreaker = Policy
@@ -60,8 +53,7 @@ public class ServicoVideosCache
         // Iniciar Cache Warming
         //IniciarCacheWarming();
     }
-
-
+    
     public async Task<List<Categoria>> ObterCategoria()
     {
         try
@@ -308,7 +300,8 @@ public class ServicoVideosCache
 
 
     //Busca por termo
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1, int tamanhoPagina = 120)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1,
+        int tamanhoPagina = 120)
     {
         string chaveCache = $"videos_pagina_{termo}{pagina}_{tamanhoPagina}";
 
@@ -341,7 +334,8 @@ public class ServicoVideosCache
         }
     }
 
-    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina, int tamanhoPagina)
+    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina,
+        int tamanhoPagina)
     {
         using var conexao = new NpgsqlConnection(_stringConexao);
         await conexao.OpenAsync();
@@ -443,7 +437,8 @@ public class ServicoVideosCache
 
 
     //Listagem por categoria
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaAsync(int categoriaId, int pagina = 1, int tamanhoPagina = 120)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaAsync(int categoriaId, int pagina = 1,
+        int tamanhoPagina = 120)
     {
         string chaveCache = $"videos_categoria_{categoriaId}{pagina}_{tamanhoPagina}";
 
@@ -476,7 +471,8 @@ public class ServicoVideosCache
         }
     }
 
-    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaPaginadosDoBanco(int categoriaId, int pagina, int tamanhoPagina)
+    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaPaginadosDoBanco(int categoriaId,
+        int pagina, int tamanhoPagina)
     {
         using var conexao = new NpgsqlConnection(_stringConexao);
         await conexao.OpenAsync();
