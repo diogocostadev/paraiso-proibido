@@ -1,53 +1,27 @@
 @model VideoBase;
 @{
-ViewBag.Title = Model.Titulo;
-Layout = "_Layout";
+    ViewBag.Title = Model.Titulo;
+    Layout = "_Layout";
 }
-
-@* <div class="container1"> *@
-@*     <div class="video-section1"> *@
-@*         <div class="video-wrapper1"> *@
-@*             <iframe src="@Model.Embed" allowfullscreen></iframe> *@
-@*         </div> *@
-@*         <h1 class="video-title1">@Model.Titulo</h1> *@
-@*         <p class="video-description1">@Model.DuracaoSegundos</p> *@
-@*     </div> *@
-@* *@
-@*     <aside class="ads-section1"> *@
-@*         <div class="ad1"> *@
-@*             <img src="/api/placeholder/300/250" alt="Anúncio 1"> *@
-@*         </div> *@
-@*         <div class="ad1"> *@
-@*             <img src="/api/placeholder/300/250" alt="Anúncio 2"> *@
-@*         </div> *@
-@*         <div class="ad1"> *@
-@*             <img src="/api/placeholder/300/250" alt="Anúncio 3"> *@
-@*         </div> *@
-@*     </aside> *@
-@* </div> *@
-
-
 
 <div class="container1">
     <div class="video-section1">
         <div class="video-wrapper1">
             <iframe src="@Model.Embed" allowfullscreen></iframe>
         </div>
-        <h1 class="video-title1">@Model.Titulo</h1>
+        <h1 class="video-title1">@Model.TituloFormatado</h1>
         
         @* Tags Section *@
         <div class="tags-section">
-            @if (Model.Termos != null)
+            @if (Model.Termos.Any())
             {
                 foreach (var tag in Model.Termos)
                 {
-                    <a href="@tag.Id" class="video-tag">@tag.termo</a>
+                    <a asp-controller="Home" asp-action="Index" asp-route-b="@tag.termo" class="video-tag">@tag.termo</a>
                 }
             }
         </div>
         
-        <p class="video-description1">@Model.DuracaoSegundos</p>
-
         @* Related Videos Section *@
         <div class="related-videos-section">
             <h2 class="related-videos-title">Vídeos Relacionados</h2>

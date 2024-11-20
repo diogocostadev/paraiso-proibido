@@ -20,4 +20,20 @@ public class VideoBase
     public List<Termos> Termos { get; set; }
     
     public List<VideoBase> VideosRelacionados { get; set; } = new List<VideoBase>();
+    
+    public string TituloFormatado
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Titulo))
+                return "";
+
+            if (Titulo.Length > 65)
+            {
+                return Titulo.Substring(0, 65).Trim() + "...";
+            }
+
+            return Titulo.Trim();
+        }
+    }
 }
