@@ -164,7 +164,6 @@ public class ServicoVideosCache
 
         try
         {
-            // Verifica se _memoryCache existe
             if (_memoryCache != null)
             {
                 if (_memoryCache.TryGetValue<ResultadoPaginado<VideoBase>>(chaveCache, out var resultadoMemoria))
@@ -173,21 +172,20 @@ public class ServicoVideosCache
                     return resultadoMemoria;
                 }
             }
-
-            // Continua com o Redis e banco de dados...
+            
             var dadosCache = await _cache.GetAsync(chaveCache);
             if (dadosCache != null)
             {
                 var dadosDescomprimidos = _usarCompressao
                     ? DescomprimirDados(dadosCache)
                     : dadosCache;
-
+            
                 var resultado = JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(
                     Encoding.UTF8.GetString(dadosDescomprimidos));
-
+            
                 // Guarda em memória se possível
                 _memoryCache?.Set(chaveCache, resultado, TimeSpan.FromSeconds(30));
-
+            
                 return resultado;
             }
 
@@ -223,40 +221,13 @@ public class ServicoVideosCache
         var offset = (pagina - 1) * tamanhoPagina;
 
         // Consulta para obter o total de registros
-        var consultaTotal = "SELECT COUNT(*) FROM dev.videos";
+        var consultaTotal = "SELECT COUNT(*) FROM dev.videos_com_miniaturas_normal";
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
         var total = Convert.ToInt32(await comandoTotal.ExecuteScalarAsync());
 
-        var consultaVideos = @"
-            SELECT 
-                vi.id, 
-                vi.titulo, 
-                vi.duracao_segundos, 
-                vi.embed, 
-                vi.default_thumb_size, 
-                vi.default_thumb_src, 
-                vi.duracao_minutos AS DuracaoMinutos,
-                jsonb_agg(
-                    jsonb_build_object(
-                        'id', mi.id,
-                        'tamanho', mi.tamanho,
-                        'src', mi.src,
-                        'altura', mi.altura,
-                        'largura', mi.largura
-                                )
-                            ) AS miniaturas
-                        FROM 
-                            dev.videos vi
-                        LEFT JOIN 
-                            dev.miniaturas mi 
-                            ON mi.video_id = vi.id 
-                            AND mi.tamanho = vi.default_thumb_size 
-                        WHERE 
-                            vi.ativo = true
-                        GROUP BY 
-                            vi.id
-                        ORDER BY vi.data_adicionada DESC
-                        OFFSET @Offset LIMIT @TamanhoPagina";
+        var consultaVideos = @"select * from dev.videos_com_miniaturas_normal 
+                                ORDER BY data_adicionada DESC
+                                    OFFSET @Offset LIMIT @TamanhoPagina";
 
         var videos = new List<VideoBase>();
         using (var comando = new NpgsqlCommand(consultaVideos, conexao))
@@ -291,8 +262,6 @@ public class ServicoVideosCache
             {
                 Console.WriteLine(e);
             }
-
-
         }
 
         return new ResultadoPaginado<VideoBase>
@@ -485,15 +454,15 @@ public class ServicoVideosCache
 
         // Consulta para obter o total de registros
         var consultaTotal = @"
-        WITH unique_videos AS (
-            SELECT DISTINCT vi.id
+            WITH unique_videos AS (
+                SELECT DISTINCT vi.id
+                FROM dev.videos vi
+                INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
+                WHERE vc.categoria_id = @CategoriaId
+            )
+            SELECT count(vi.*)
             FROM dev.videos vi
-            INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
-            WHERE vc.categoria_id = @CategoriaId
-        )
-        SELECT count(vi.*)
-        FROM dev.videos vi
-        INNER JOIN unique_videos uv ON vi.id = uv.id";
+            INNER JOIN unique_videos uv ON vi.id = uv.id";
 
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
         comandoTotal.Parameters.AddWithValue("@CategoriaId", categoriaId);
@@ -501,38 +470,38 @@ public class ServicoVideosCache
 
         // Consulta paginada com miniaturas agregadas
         var consultaVideos = @"
-        WITH unique_videos AS (
-            SELECT DISTINCT vi.id
-            FROM videos.dev.videos vi
-            INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
-            WHERE vc.categoria_id = @CategoriaId
-        )
-        SELECT 
-            vi.id, 
-            vi.titulo, 
-            vi.duracao_segundos, 
-            vi.embed, 
-            vi.default_thumb_size, 
-            vi.default_thumb_src, 
-            vi.duracao_minutos AS DuracaoMinutos,
-            jsonb_agg(
-                jsonb_build_object(
-                    'id', mi.id,
-                    'tamanho', mi.tamanho,
-                    'src', mi.src,
-                    'altura', mi.altura,
-                    'largura', mi.largura
+                WITH unique_videos AS (
+                    SELECT DISTINCT vi.id
+                    FROM videos.dev.videos vi
+                    INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
+                    WHERE vc.categoria_id = @CategoriaId
                 )
-            ) AS miniaturas
-        FROM 
-            dev.videos vi
-        LEFT JOIN 
-            dev.miniaturas mi ON mi.video_id = vi.id AND mi.tamanho = vi.default_thumb_size
-        INNER JOIN unique_videos uv ON vi.id = uv.id
-        WHERE vi.ativo = true
-        GROUP BY vi.id
-        ORDER BY vi.data_adicionada DESC
-        OFFSET @Offset LIMIT @TamanhoPagina";
+                SELECT 
+                    vi.id, 
+                    vi.titulo, 
+                    vi.duracao_segundos, 
+                    vi.embed, 
+                    vi.default_thumb_size, 
+                    vi.default_thumb_src, 
+                    vi.duracao_minutos AS DuracaoMinutos,
+                    jsonb_agg(
+                        jsonb_build_object(
+                            'id', mi.id,
+                            'tamanho', mi.tamanho,
+                            'src', mi.src,
+                            'altura', mi.altura,
+                            'largura', mi.largura
+                        )
+                    ) AS miniaturas
+                FROM 
+                    dev.videos vi
+                LEFT JOIN 
+                    dev.miniaturas mi ON mi.video_id = vi.id AND mi.tamanho = vi.default_thumb_size
+                INNER JOIN unique_videos uv ON vi.id = uv.id
+                WHERE vi.ativo = true
+                GROUP BY vi.id
+                ORDER BY vi.data_adicionada DESC
+                OFFSET @Offset LIMIT @TamanhoPagina";
 
         var videos = new List<VideoBase>();
         using (var comando = new NpgsqlCommand(consultaVideos, conexao))

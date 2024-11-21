@@ -215,40 +215,13 @@ public class ServicoVideosCacheRobo
         var offset = (pagina - 1) * tamanhoPagina;
 
         // Consulta para obter o total de registros
-        var consultaTotal = "SELECT COUNT(*) FROM dev.videos";
+        var consultaTotal = "SELECT COUNT(*) FROM dev.videos_com_miniaturas_normal";
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
         var total = Convert.ToInt32(await comandoTotal.ExecuteScalarAsync());
 
-        var consultaVideos = @"
-            SELECT 
-                vi.id, 
-                vi.titulo, 
-                vi.duracao_segundos, 
-                vi.embed, 
-                vi.default_thumb_size, 
-                vi.default_thumb_src, 
-                vi.duracao_minutos AS DuracaoMinutos,
-                jsonb_agg(
-                    jsonb_build_object(
-                        'id', mi.id,
-                        'tamanho', mi.tamanho,
-                        'src', mi.src,
-                        'altura', mi.altura,
-                        'largura', mi.largura
-                                )
-                            ) AS miniaturas
-                        FROM 
-                            dev.videos vi
-                        LEFT JOIN 
-                            dev.miniaturas mi 
-                            ON mi.video_id = vi.id 
-                            AND mi.tamanho = vi.default_thumb_size 
-                        WHERE 
-                            vi.ativo = true
-                        GROUP BY 
-                            vi.id
-                        ORDER BY vi.data_adicionada DESC
-                        OFFSET @Offset LIMIT @TamanhoPagina";
+        var consultaVideos = @"select * from dev.videos_com_miniaturas_normal 
+                                ORDER BY data_adicionada DESC
+                                    OFFSET @Offset LIMIT @TamanhoPagina";
 
         var videos = new List<VideoBase>();
         using (var comando = new NpgsqlCommand(consultaVideos, conexao))
