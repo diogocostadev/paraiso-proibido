@@ -307,8 +307,7 @@ public class ServicoVideosCacheRobo
         }
     }
 
-    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina,
-        int tamanhoPagina)
+    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina, int tamanhoPagina)
     {
         using var conexao = new NpgsqlConnection(_stringConexao);
         await conexao.OpenAsync();
@@ -319,13 +318,13 @@ public class ServicoVideosCacheRobo
         var consultaTotal = @"
         WITH unique_videos AS (
             SELECT DISTINCT vi.id
-            FROM videos.dev.videos vi
-            INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
-            INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
+            FROM dev.videos_com_miniaturas_normal vi
+            INNER JOIN dev.video_termos vt ON vi.id = vt.video_id
+            INNER JOIN dev.termos te ON vt.termo_id = te.id
             WHERE te.termo LIKE @Termo
         )
         SELECT count(vi.*)
-        FROM videos.dev.videos vi
+        FROM dev.videos_com_miniaturas_normal vi
         INNER JOIN unique_videos uv ON vi.id = uv.id";
 
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
@@ -336,35 +335,12 @@ public class ServicoVideosCacheRobo
         var consultaVideos = @"
         WITH unique_videos AS (
             SELECT DISTINCT vi.id
-            FROM videos.dev.videos vi
-            INNER JOIN videos.dev.video_termos vt ON vi.id = vt.video_id
-            INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
+            FROM dev.videos_com_miniaturas_normal vi
+            INNER JOIN dev.video_termos vt ON vi.id = vt.video_id
+            INNER JOIN dev.termos te ON vt.termo_id = te.id
             WHERE te.termo LIKE @Termo
         )
-        SELECT 
-            vi.id, 
-            vi.titulo, 
-            vi.duracao_segundos, 
-            vi.embed, 
-            vi.default_thumb_size, 
-            vi.default_thumb_src, 
-            vi.duracao_minutos AS DuracaoMinutos,
-            jsonb_agg(
-                jsonb_build_object(
-                    'id', mi.id,
-                    'tamanho', mi.tamanho,
-                    'src', mi.src,
-                    'altura', mi.altura,
-                    'largura', mi.largura
-                )
-            ) AS miniaturas
-        FROM 
-            videos.dev.videos vi
-        LEFT JOIN 
-            videos.dev.miniaturas mi ON mi.video_id = vi.id AND mi.tamanho = vi.default_thumb_size
-        INNER JOIN unique_videos uv ON vi.id = uv.id
-        WHERE vi.ativo = true
-        GROUP BY vi.id
+        SELECT * FROM dev.videos_com_miniaturas_normal vi
         ORDER BY vi.data_adicionada DESC
         OFFSET @Offset LIMIT @TamanhoPagina";
 
