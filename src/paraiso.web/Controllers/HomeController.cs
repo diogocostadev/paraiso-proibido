@@ -19,7 +19,7 @@ public class HomeController : Controller
     }
     
     
-    public async Task<IActionResult> Index(int p = 1, int t = 120, string b = "", int catid = 0)
+    public async Task<IActionResult> Index(int p = 1, int t = 36, string b = "", int catid = 0)
     {
         ViewBag.b = b;
         
@@ -76,7 +76,7 @@ public class HomeController : Controller
         return categorias;
     }
     
-    public async Task<IActionResult> Categorias(int p = 1, int t = 120, string b = "")
+    public async Task<IActionResult> Categorias(int p = 1, int t = 36, string b = "")
     {
         ViewBag.b = b;
         

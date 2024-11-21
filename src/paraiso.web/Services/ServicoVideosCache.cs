@@ -158,7 +158,7 @@ public class ServicoVideosCache
     #endregion
 
 
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosAsync(int pagina = 1, int tamanhoPagina = 120)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosAsync(int pagina = 1, int tamanhoPagina = 36)
     {
         string chaveCache = $"videos_pagina_{pagina}_{tamanhoPagina}";
 
@@ -277,7 +277,7 @@ public class ServicoVideosCache
 
 
     //Busca por termo
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1, int tamanhoPagina = 120)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1, int tamanhoPagina = 36)
     {
         string chaveCache = $"videos_pagina_{termo}{pagina}_{tamanhoPagina}";
 
@@ -344,6 +344,7 @@ public class ServicoVideosCache
             WHERE te.termo LIKE @Termo
         )
         SELECT * FROM dev.videos_com_miniaturas_normal vi
+        INNER JOIN unique_videos uv ON vi.id = uv.id
         ORDER BY vi.data_adicionada DESC
         OFFSET @Offset LIMIT @TamanhoPagina";
 
@@ -389,7 +390,7 @@ public class ServicoVideosCache
 
 
     //Listagem por categoria
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaAsync(int categoriaId, int pagina = 1, int tamanhoPagina = 120)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaAsync(int categoriaId, int pagina = 1, int tamanhoPagina = 36)
     {
         string chaveCache = $"videos_categoria_{categoriaId}{pagina}_{tamanhoPagina}";
 
@@ -433,12 +434,12 @@ public class ServicoVideosCache
         var consultaTotal = @"
             WITH unique_videos AS (
                 SELECT DISTINCT vi.id
-                FROM dev.videos vi
+                FROM dev.videos_com_miniaturas_normal vi
                 INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
                 WHERE vc.categoria_id = @CategoriaId
             )
             SELECT count(vi.*)
-            FROM dev.videos vi
+            FROM dev.videos_com_miniaturas_normal vi
             INNER JOIN unique_videos uv ON vi.id = uv.id";
 
         using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
@@ -449,34 +450,13 @@ public class ServicoVideosCache
         var consultaVideos = @"
                 WITH unique_videos AS (
                     SELECT DISTINCT vi.id
-                    FROM videos.dev.videos vi
+                    FROM dev.videos_com_miniaturas_normal vi
                     INNER JOIN dev.video_categorias vc ON vi.id = vc.video_id
                     WHERE vc.categoria_id = @CategoriaId
                 )
                 SELECT 
-                    vi.id, 
-                    vi.titulo, 
-                    vi.duracao_segundos, 
-                    vi.embed, 
-                    vi.default_thumb_size, 
-                    vi.default_thumb_src, 
-                    vi.duracao_minutos AS DuracaoMinutos,
-                    jsonb_agg(
-                        jsonb_build_object(
-                            'id', mi.id,
-                            'tamanho', mi.tamanho,
-                            'src', mi.src,
-                            'altura', mi.altura,
-                            'largura', mi.largura
-                        )
-                    ) AS miniaturas
-                FROM 
-                    dev.videos vi
-                LEFT JOIN 
-                    dev.miniaturas mi ON mi.video_id = vi.id AND mi.tamanho = vi.default_thumb_size
+                    * from dev.videos_com_miniaturas_normal vi
                 INNER JOIN unique_videos uv ON vi.id = uv.id
-                WHERE vi.ativo = true
-                GROUP BY vi.id
                 ORDER BY vi.data_adicionada DESC
                 OFFSET @Offset LIMIT @TamanhoPagina";
 
@@ -549,7 +529,6 @@ public class ServicoVideosCache
 
                 if (video == null) return null;
 
-                // Executa as queries em paralelo
                 video.Termos = await ObterTermosComNovaConexaoAsync(id, cancellationToken);
 
                 try
@@ -560,16 +539,6 @@ public class ServicoVideosCache
                         await conexao.OpenAsync(cancellationToken);
                         video.VideosRelacionados = await ObterVideosRelacionadosAsync(conexao, id, video.Termos, cancellationToken); 
                      
-                    }
-
-                    await using (var conexao = new NpgsqlConnection(_stringConexao))
-                    {
-                        await conexao.OpenAsync(cancellationToken);
-                        
-                        foreach (var videosRela in video.VideosRelacionados)
-                        {
-                            videosRela.Miniaturas = await ObterMiniaturasParaVideoAsync(conexao, videosRela.Id, videosRela.DefaultThumbSize, cancellationToken);
-                        }
                     }
                 }
                 catch (Exception e)
@@ -645,16 +614,24 @@ public class ServicoVideosCache
             cmd.Parameters.AddWithValue("@TermoId", termoIds.FirstOrDefault());
             cmd.Parameters.AddWithValue("@Id", id);
 
-            using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
+            using var leitor = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await leitor.ReadAsync(cancellationToken))
             {
+                var miniaturasJson = leitor["miniaturas"] as string;
+                var miniaturas = string.IsNullOrEmpty(miniaturasJson)
+                    ? new List<Miniaturas>()
+                    : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
+                
                 videosRelacionados.Add(new VideoBase
                 {
-                    Id = reader.GetString(0),
-                    Titulo = reader.GetString(1),
-                    DefaultThumbSrc = reader.GetString(2),
-                    DefaultThumbSize = reader.GetString(3)
-                    //Miniaturas = await ObterMiniaturasParaVideoAsync(conexao, reader.GetString(0), reader.GetString(3), cancellationToken)
+                    Id = leitor.GetString(0),
+                    Titulo = leitor.GetString(1),
+                    DuracaoSegundos = leitor.GetInt32(2),
+                    Embed = leitor.GetString(3),
+                    DefaultThumbSize = leitor.GetString(4),
+                    DefaultThumbSrc = leitor.GetString(5),
+                    DuracaoMinutos = leitor.GetString(6),
+                    Miniaturas = miniaturas
                 });
             }
 
@@ -662,29 +639,6 @@ public class ServicoVideosCache
         }
 
         return videosRelacionados;
-    }
-    private async Task<List<Miniaturas>> ObterMiniaturasParaVideoAsync(
-        NpgsqlConnection conexao,
-        string videoId,
-        string defaultThumbSize,
-        CancellationToken cancellationToken)
-    {
-        using var cmd = new NpgsqlCommand("select src from videos.dev.miniaturas where video_id = @VideoId and tamanho = @DefaultThumbSize", conexao);
-        cmd.Parameters.AddWithValue("@VideoId", videoId);
-        cmd.Parameters.AddWithValue("@DefaultThumbSize", defaultThumbSize);
-
-        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-        var miniaturas = new List<Miniaturas>();
-
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            miniaturas.Add(new Miniaturas
-            {
-                Src = reader.GetString(0)
-            });
-        }
-
-        return miniaturas;
     }
     
     private static class Queries
@@ -708,35 +662,26 @@ public class ServicoVideosCache
         {
             public const string ObterVideosRelacionadosBasicos = @"
                 WITH videos_relacionados AS (
+                    SELECT 
+                        distinct(v.id) as id
+                    FROM 
+                        videos.dev.video_termos vt
+                    INNER JOIN 
+                        videos.dev.videos_com_miniaturas_normal v ON v.id = vt.video_id
+                    INNER JOIN 
+                        videos.dev.video_termos vt2 ON vt2.video_id = v.id
+                    WHERE 
+                        vt2.termo_id = @TermoId AND v.id != @Id
+                )
                 SELECT 
-                    v.id,
-                    v.titulo,
-                    v.default_thumb_src,
-                    v.default_thumb_size,
-                    COUNT(DISTINCT vt2.termo_id) AS termos_em_comum
+                    *
                 FROM 
-                    videos.dev.video_termos vt
+                    dev.videos_com_miniaturas_normal vi
                 INNER JOIN 
-                    videos.dev.videos v ON v.id = vt.video_id
-                INNER JOIN 
-                    videos.dev.video_termos vt2 ON vt2.video_id = v.id
-                WHERE 
-                    vt2.termo_id = (@TermoId)
-                    AND v.id != @Id
-                GROUP BY 
-                    v.id, v.titulo, v.default_thumb_src, v.default_thumb_size
-            )
-            SELECT 
-                id,
-                titulo,
-                default_thumb_src,
-                default_thumb_size,
-                termos_em_comum  -- Inclua a coluna termos_em_comum no SELECT
-            FROM 
-                videos_relacionados
-            ORDER BY 
-                termos_em_comum DESC, id
-            LIMIT 12";
+                        videos_relacionados vr on vr.id = vi.id
+                ORDER BY 
+                    vi.data_adicionada DESC
+                LIMIT 12";
         }
     }
 }
