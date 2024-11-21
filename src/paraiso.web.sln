@@ -1,0 +1,66 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "paraiso.web", "paraiso.web\paraiso.web.csproj", "{F5BA4ED8-A093-4948-A2B0-B158CF064251}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "robos", "robos", "{5F91303D-A734-4967-8F77-9FCB0933EC09}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoboPhub", "RoboPhub\RoboPhub.csproj", "{D3C7D81E-D5BA-43BD-86EF-71B008A6061A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "paraiso.models", "paraiso.models\paraiso.models.csproj", "{7BDE1BF3-D3D7-4E01-B559-33CB19A71A38}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B57CA7CD-2887-430C-9720-13E574B50284}"
+	ProjectSection(SolutionItems) = preProject
+		docker-compose.yml = docker-compose.yml
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsumidorRoboPhub", "ConsumidorRoboPhub\ConsumidorRoboPhub.csproj", "{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "paraiso.phub.atualizador", "paraiso.phub.atualizador\paraiso.phub.atualizador.csproj", "{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "paraiso.phub.atualiza.categorias", "paraiso.phub.atualiza.categorias\paraiso.phub.atualiza.categorias.csproj", "{450D11FB-1ADF-4956-A62F-AAA3CFE0D3C6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "paraiso.tradutor", "paraiso.tradutor\paraiso.tradutor.csproj", "{F1687ABD-E4B2-47EE-BB96-426B4271B9B1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F5BA4ED8-A093-4948-A2B0-B158CF064251}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5BA4ED8-A093-4948-A2B0-B158CF064251}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5BA4ED8-A093-4948-A2B0-B158CF064251}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5BA4ED8-A093-4948-A2B0-B158CF064251}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3C7D81E-D5BA-43BD-86EF-71B008A6061A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3C7D81E-D5BA-43BD-86EF-71B008A6061A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3C7D81E-D5BA-43BD-86EF-71B008A6061A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3C7D81E-D5BA-43BD-86EF-71B008A6061A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BDE1BF3-D3D7-4E01-B559-33CB19A71A38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BDE1BF3-D3D7-4E01-B559-33CB19A71A38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BDE1BF3-D3D7-4E01-B559-33CB19A71A38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BDE1BF3-D3D7-4E01-B559-33CB19A71A38}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{450D11FB-1ADF-4956-A62F-AAA3CFE0D3C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{450D11FB-1ADF-4956-A62F-AAA3CFE0D3C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{450D11FB-1ADF-4956-A62F-AAA3CFE0D3C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{450D11FB-1ADF-4956-A62F-AAA3CFE0D3C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1687ABD-E4B2-47EE-BB96-426B4271B9B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1687ABD-E4B2-47EE-BB96-426B4271B9B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1687ABD-E4B2-47EE-BB96-426B4271B9B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1687ABD-E4B2-47EE-BB96-426B4271B9B1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D3C7D81E-D5BA-43BD-86EF-71B008A6061A} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
+		{F0F11C57-95C3-4C4F-95E2-F83ECF543BA6} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
+		{8FFC0FC3-E1F1-4B8A-B0BF-0BFA7F88D0E2} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
+		{450D11FB-1ADF-4956-A62F-AAA3CFE0D3C6} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
+		{F1687ABD-E4B2-47EE-BB96-426B4271B9B1} = {5F91303D-A734-4967-8F77-9FCB0933EC09}
+	EndGlobalSection
+EndGlobal

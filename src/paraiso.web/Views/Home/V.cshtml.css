@@ -1,0 +1,107 @@
+/* Container principal ajustado */
+.container1 {
+    display: flex;
+    width: 100%;
+    padding: 0; /* Remove padding para maximizar espaço */
+    margin: 0;
+    background-color: #1a1a1a;
+    min-height: calc(100vh - 140px); /* Ajusta para altura do header/navbar */
+}
+
+/* Seção do vídeo ocupando máximo espaço possível */
+.video-section1 {
+    flex: 1;
+    padding: 0 20px;
+    max-width: calc(100% - 320px); /* Considera largura dos anúncios + margem */
+}
+
+/* Wrapper do vídeo com tamanho maximizado */
+.video-wrapper1 {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* Mantém aspect ratio 16:9 */
+    margin-top: 20px;
+    background: #000;
+}
+
+.video-wrapper1 iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.video-title1 {
+    font-size: 24px;
+    color: #ffffff;
+    margin: 15px 0;
+}
+
+.video-description1 {
+    color: #cccccc;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+/* Seção de anúncios fixa na direita */
+.ads-section1 {
+    width: 300px;
+    min-width: 300px; /* Garante largura mínima */
+    padding: 20px 10px;
+    background-color: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-left: 1px solid #333;
+}
+
+.ad1 {
+    width: 300px;
+    height: 250px;
+    background: #2a2a2a;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ad1 img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Responsividade ajustada */
+@media (max-width: 1200px) {
+    .container1 {
+        flex-direction: column;
+    }
+
+    .video-section1 {
+        max-width: 100%;
+        padding: 0 10px;
+    }
+
+    .ads-section1 {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        border-left: none;
+        border-top: 1px solid #333;
+    }
+
+    .ad1 {
+        margin: 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .video-section1 {
+        padding: 0 5px;
+    }
+
+    .video-title1 {
+        font-size: 20px;
+    }
+}

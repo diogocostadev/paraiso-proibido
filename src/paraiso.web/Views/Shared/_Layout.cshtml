@@ -1,0 +1,105 @@
+﻿    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>@ViewData["Title"] - O que é mais gostoso não precisa ser proibido.</title>
+        <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
+
+        <meta name="RATING" content="RTA-5042-1996-1400-1577-RTA" />
+
+    </head>
+    <body>
+
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <h1>Paraiso Proibido</h1>
+            </div>
+            <div class="search-container">
+                <form method="get" action="@Url.Action("Index")" class="form-inline">
+                    <input type="text" class="search-bar" placeholder="Pesquisar vídeos..." name="b" id="b" />
+                    <button type="submit" class="search-button">Buscar</button>
+                </form>
+            </div>
+        </div>
+    </header>
+    
+    <nav class="navbar">
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li class="dropdown">
+                <a href="#" class="dropbtn">Categorias</a>
+                <div class="dropdown-content">
+                    @if (ViewData["Categorias"] != null)
+                    {
+                        var categorias = ViewData["Categorias"] as List<Categoria>;
+                        foreach (var categoria in categorias)
+                        {
+                            if (@categoria.Id > 0)
+                            {
+                                <a asp-route-catid="@categoria.Id" asp-action="Index" asp-controller="Home">@categoria.Nome</a>
+                            }
+                            else
+                            {
+                                <a asp-action="Categorias" asp-controller="Home">@categoria.Nome</a>
+                            }
+                        }
+                    }
+                </div>
+            </li>
+            @* <li><a href="/videos">Vídeos</a></li> *@
+            @* <li><a href="/privacy">Privacy</a></li> *@
+        </ul>
+    </nav>
+    
+    <main role="main" class="pb-3">
+        @RenderBody()
+    </main>
+    
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a asp-area="" asp-controller="Home" asp-action="PoliticaDePrivacidade">Política de Privacidade</a>
+                <a asp-area="" asp-controller="Home" asp-action="PoliticaDeCookie">Política de Cookie</a>
+                <a asp-area="" asp-controller="Home" asp-action="AvisoConteudoSensivel">Aviso de Conteúdo Sensível</a>
+                <a asp-area="" asp-controller="Home" asp-action="RemocaoDeVideo">Remoção de Conteúdo</a>
+                <a asp-area="" asp-controller="Home" asp-action="TermoDeConsentimento">Termo de Consentimento</a>
+                <a asp-area="" asp-controller="Home" asp-action="TermoDeUso">Termo de Uso</a>
+            </div>
+            <div class="footer-copyright">
+                &copy; @DateTime.Now.Year - Paraíso Proibido - build: v1.0.5
+            </div>
+        </div>
+    </footer>
+    <div id="ageVerificationModal" class="age-modal">
+        <div class="age-modal-content">
+            <h2>Paraiso Proibido é um website apenas para adultos!</h2>
+            <p>O conteúdo disponível pode conter materiais pornográficos.</p>
+
+            <p>Paraiso Proibido é estritamente limitado a pessoas com mais de 18 anos ou com idade legal em sua jurisdição, o que for maior.</p>
+
+            <p>Um de nossos principais objetivos é ajudar os pais a restringir o acesso ao site para menores, então garantimos que o Paraiso Proibido é e permanece totalmente em conformidade com o código RTA (Restricted to Adults). Isso significa que todo acesso ao site pode ser bloqueado por ferramentas simples de controle parental.</p>
+
+            <p>Qualquer pessoa com um menor em sua residência ou sob sua supervisão deve implementar proteções básicas de controle parental, incluindo configurações de hardware do computador, instalação de software ou serviços de filtragem de ISP, para bloquear seus menores de acessarem conteúdo inadequado.</p>
+
+            <div class="age-buttons">
+                <button id="enterSite" class="enter-button">Tenho 18 anos ou mais — entrar no site</button>
+                <a href="https://www.google.com" class="leave-link">Sair</a>
+            </div>
+
+            <div class="footer-links">
+                <a href="/como-proteger-menores" class="protect-link">como proteger menores</a>
+                <img src="/img/88x31_RTA-5042-1996-1400-1577-RTA_b.gif" alt="RTA Logo" class="rta-logo" />
+            </div>
+        </div>
+    </div>
+    
+    <script src="~/js/mais18.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    </body>
+    </html>

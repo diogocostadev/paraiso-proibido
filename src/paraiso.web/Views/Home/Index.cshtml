@@ -1,0 +1,77 @@
+﻿@model ResultadoPaginado<VideoBase>;
+@{
+    ViewData["Title"] = "Paraiso Proibido";
+    var videosPagina = Model.Itens;
+}
+
+<div class="container">
+    <div class="videos">
+        @if (videosPagina.Any())
+        {
+            foreach (var video in videosPagina)
+            {
+                <div class="video-item">
+                    
+                    <a asp-action="V" 
+                       asp-route-id="@video.Id"
+                       asp-route-p="@Model.PaginaAtual">
+                        <img src="@video.DefaultThumbSrc" alt="@video.TituloFormatado" class="video-thumb"
+                             data-thumbs="@string.Join(",", @video.Miniaturas.Select(t => t.Src))" />
+                        <div class="video-time">@video.DuracaoMinutos</div>
+                        <p>@video.TituloFormatado</p>
+                    </a>
+                </div>
+            }
+        }
+    </div>
+    @if (Model.TotalPaginas > 1)
+    {
+        <div class="pagination2">
+            @if (Model.TemPaginaAnterior)
+            {
+                <a href="@Url.Action("Index", new { p = Model.PaginaAtual - 1, t = Model.TamanhoPagina })"
+                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    Anterior
+                </a>
+            }
+
+            @for (int i = Math.Max(1, Model.PaginaAtual - 2); i <= Math.Min(Model.TotalPaginas, Model.PaginaAtual + 2); i++)
+            {
+                <a href="@Url.Action("Index", new { p = i, t = Model.TamanhoPagina })"
+                   class="px-4 py-2 @(i == Model.PaginaAtual ? "bg-blue-600 text-white" : "bg-gray-200") rounded hover:bg-blue-500 hover:text-white">
+                    @i
+                </a>
+            }
+
+            @if (Model.TemProximaPagina)
+            {
+                <a href="@Url.Action("Index", new { p = Model.PaginaAtual + 1, t = Model.TamanhoPagina })"
+                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    Próxima
+                </a>
+            }
+        </div>
+    }
+</div>
+
+
+
+<script>
+    document.querySelectorAll('.video-thumb').forEach(function(thumb) {
+        const thumbsArray = thumb.getAttribute('data-thumbs').split(',');
+        let index = 0;
+        let interval;
+
+        thumb.addEventListener('mouseenter', function() {
+            interval = setInterval(function() {
+                thumb.src = thumbsArray[index];
+                index = (index + 1) % thumbsArray.length;
+            }, 1000);
+        });
+
+        thumb.addEventListener('mouseleave', function() {
+            clearInterval(interval);
+            thumb.src = thumbsArray[0];
+        });
+    });
+</script>

@@ -1,0 +1,1221 @@
+body {
+  background-color: #1a1a1a;
+  color: #f5f5f5;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background-color: #333;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 2rem;
+  color: #fff;
+  position: relative;
+  z-index: 10;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+
+.logo {
+  margin-right: 20px;
+}
+
+.logo h1 {
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+/* Container de busca */
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 5px; /* Espaço entre o input e o botão */
+}
+
+.search-bar {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 0.9rem;
+  background-color: #222;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  width: 200px; /* Largura fixa para o campo de texto */
+}
+
+.search-bar::placeholder {
+  color: #888;
+}
+
+.search-button {
+  height: 36px;
+  padding: 0 15px;
+  font-size: 0.9rem;
+  background-color: #444;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap; /* Impede que o texto do botão quebre */
+  display: inline-flex;
+  align-items: center;
+}
+
+.search-button:hover {
+  background-color: #555;
+}
+
+
+
+/* Container for all content */
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 140px);
+}
+
+/* Video grid container */
+.videos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 2rem; /* Add space between videos and pagination */
+}
+
+/* Pagination container */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto; /* Push pagination to bottom of container */
+  padding: 2rem 0;
+  width: 100%;
+}
+
+/* Individual page links */
+.pagination-container a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #333;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+/* Hover state for links */
+.pagination-container a:hover {
+  background-color: #444;
+}
+
+/* Active page */
+.pagination-container a.active {
+  background-color: #1b2128;
+  cursor: default;
+}
+
+/* Previous/Next buttons */
+.pagination-container a.nav-button {
+  padding: 0.5rem 1rem;
+  background-color: #1b2128;
+}
+
+.pagination-container a.nav-button:hover {
+  background-color: #1657a3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pagination-container {
+    gap: 0.25rem;
+  }
+
+  .pagination-container a {
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/*---------*/
+
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+
+  .search-container {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .search-bar {
+    width: calc(100% - 100px); /* Ajusta a largura deixando espaço para o botão */
+  }
+}
+
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2rem;
+  flex: 1;
+}
+
+/* Reset básico para a navbar */
+.navbar {
+  background-color: #18191a;
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid #2c2d2e;
+}
+
+.navbar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.navbar ul li {
+  position: relative;
+  margin: 0;
+}
+
+.navbar ul li a {
+  color: #e4e6eb;
+  text-decoration: none;
+  padding: 15px 20px;
+  display: block;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+/* Estilo hover para os links */
+.navbar ul li a:hover {
+  background-color: #2c2d2e;
+  color: #ffffff;
+}
+
+/* Estilização do dropdown */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #242526;
+  min-width: 200px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  z-index: 1000;
+  border-radius: 0 0 4px 4px;
+  border: 1px solid #2c2d2e;
+  border-top: none;
+}
+
+.dropdown-content a {
+  color: #e4e6eb;
+  padding: 12px 20px;
+  display: block;
+  border-bottom: 1px solid #2c2d2e;
+}
+
+.dropdown-content a:last-child {
+  border-bottom: none;
+}
+
+.dropdown-content a:hover {
+  background-color: #2c2d2e;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+/* Seta para baixo no dropdown */
+.dropbtn::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 8px;
+  vertical-align: middle;
+  border-top: 4px solid #e4e6eb;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .navbar ul {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dropdown-content {
+    position: static;
+    box-shadow: none;
+    border: none;
+  }
+
+  .navbar ul li a {
+    padding: 12px 15px;
+  }
+}
+
+
+.footer {
+  text-align: center;
+  padding: 1rem;
+  background-color: #333;
+  color: #fff;
+  margin-top: 2rem;
+  z-index: 5;
+}
+
+.videos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+
+
+.video-item {
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  overflow: hidden;
+  width: calc(16.66% - 1rem);
+  position: relative;
+  transition: transform 0.3s;
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+}
+
+.video-item:hover {
+  transform: scale(1.05);
+}
+
+.video-item a {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+
+}
+
+.video-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+.video-time {
+  position: absolute;
+  right: 8px;
+  bottom: 54px; 
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 2;
+}
+
+.video-item p {
+  min-height: 48px;
+  height: 48px;
+  padding: 8px;
+  font-size: 0.875rem;
+  color: #fff;
+  line-height: 1.2;
+  /*height: 2.4em;*/
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Força exatamente 2 linhas */
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  word-wrap: break-word; /* Para quebrar palavras muito longas */
+  white-space: normal;   /* Permite quebra de linha */
+  hyphens: auto;        /* Adiciona hífen em palavras longas se necessário */
+  width: 100%;          /* Garante largura total do container */
+  max-height: 2.4em;    /* Garante altura máxima de 2 linhas */
+  text-align: left;     /* Alinhamento consistente */
+  box-sizing: border-box;/* Inclui padding na altura */
+  position: relative;   /* Para posicionar ellipsis corretamente */
+  
+  transition: none; /* Remove animações que podem afetar a altura */
+  pointer-events: none; /* Evita seleção de texto que pode afetar a altura */
+}
+
+/*.video-item p {*/
+/*  min-height: 48px;*/
+/*  padding: 8px;*/
+/*  font-size: 0.875rem;*/
+/*  color: #fff;*/
+/*  line-height: 1.2;*/
+/*  height: 2.4em;*/
+/*  margin: 0;*/
+/*  overflow: hidden;*/
+/*  text-overflow: ellipsis;*/
+/*  display: -webkit-box;*/
+/*  -webkit-line-clamp: 2;*/
+/*  -webkit-box-orient: vertical;*/
+/*  word-break: break-word;*/
+/*}*/
+
+/* Fix para Firefox */
+@-moz-document url-prefix() {
+  .video-item p {
+    display: block;
+    max-height: 2.4em;
+    position: relative;
+  }
+
+  .video-item p:after {
+    content: '...';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding-left: 3px;
+    background-color: #2a2a2a;
+  }
+}
+
+/* Ajuste responsivo */
+@media (max-width: 768px) {
+  .video-item p {
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+}
+
+@media (max-width: 1024px) {
+  .video-item {
+    width: calc(25% - 1rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .video-item {
+    width: calc(33.33% - 1rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .video-item {
+    width: calc(50% - 1rem);
+  }
+}
+
+
+
+.pagination1 {
+  display: flex;
+  justify-content: center; /* Centraliza os itens horizontalmente */
+  align-items: center;     /* Centraliza os itens verticalmente   
+ */
+  gap: 1rem;              /* Espaçamento entre os links */
+  margin: 1rem auto;      /* Margem superior/inferior de 1rem e centraliza horizontalmente */
+  padding: 1rem;           /* Adiciona padding interno */
+  background-color: #f5f5f5; /* Cor de fundo clara */
+  border-radius: 5px;      /* Cantos arredondados */
+}
+
+.pagination1 a {
+  display: inline-block;  /* Torna os links como blocos inline */
+  padding: 0.5rem 1rem;   /* Padding nos links */
+  background-color: #333; /* Cor de fundo escura para os links */
+  color: #fff;            /* Cor do texto branca */
+  text-decoration: none;  /* Remove a decoração do link */
+  border-radius: 3px;      /* Cantos arredondados nos links */
+  transition: all 0.3s ease; /* Adiciona uma transição suave */
+}
+
+.pagination1 a:hover {
+  background-color: #1b6ec2; /* Cor de fundo azul ao passar o mouse */
+}
+
+.pagination1 a.active {
+  background-color: #1b6ec2; /* Cor de fundo azul para a página atual */
+  color: ;            /* Cor do texto branca para a página atual */
+  pointer-events: none;    /* Impede que o link da página atual seja clicado */
+}
+
+.pagination2 {
+  display: flex;
+  justify-content: center; /* Centraliza os itens horizontalmente */
+  align-items: center;     /* Centraliza os itens verticalmente */
+  gap: 2;                 /* Espaçamento entre os links (respeitando o gap-2 do HTML) */
+  margin: 0 auto;         /* Centraliza horizontalmente */
+  mt-8;                   /* Margem top de 8 (respeitando o mt-8 do HTML) */
+}
+
+/* Estilos para todos os links da paginação */
+.pagination2 a {
+  px-4;                  /* Padding horizontal de 4 (respeitando o px-4 do HTML) */
+  py-2;                  /* Padding vertical de 2 (respeitando o py-2 do HTML) */
+  border-radius: 5px;      /* Cantos arredondados */
+  text-decoration: none;  /* Remove a decoração do link */
+  transition: all 0.3s ease; /* Adiciona uma transição suave */
+}
+
+/* Estilos para os links "Anterior" e "Próxima" */
+.pagination2 a:first-child,
+.pagination2 a:last-child {
+  background-color: #393636; /* Cor de fundo azul (equivalente ao bg-blue-500) */
+  color: #fff;            /* Cor do texto branca */
+}
+
+.pagination2 a:first-child:hover,
+.pagination2 a:last-child:hover {
+  background-color: #393636; /* Cor de fundo azul escuro ao passar o mouse (equivalente ao hover:bg-blue-600) */
+}
+
+/* Estilos para os links numéricos */
+.pagination2 a:not(:first-child):not(:last-child) {
+  background-color: #e5e7eb; /* Cor de fundo cinza claro (equivalente ao bg-gray-200) */
+  color: #000;            /* Cor do texto preta */
+}
+
+.pagination2 a:not(:first-child):not(:last-child):hover {
+  background-color: #393636; /* Cor de fundo azul ao passar o mouse (equivalente ao hover:bg-blue-500) */
+  color: #fff;            /* Cor do texto branca */
+}
+
+/* Estilos para o link da página atual */
+.pagination2 a.bg-blue-600 {
+  background-color: #393636; /* Cor de fundo azul escuro (equivalente ao bg-blue-600) */
+  color: #fff;            /* Cor do texto branca */
+  pointer-events: none;    /* Impede que o link da página atual seja clicado */
+}
+
+
+/* Container principal ajustado */
+.container1 {
+  display: flex;
+  width: 100%;
+  padding: 0; /* Remove padding para maximizar espaço */
+  margin: 0;
+  background-color: #1a1a1a;
+  min-height: calc(100vh - 140px); /* Ajusta para altura do header/navbar */
+}
+
+/* Seção do vídeo ocupando máximo espaço possível */
+.video-section1 {
+  flex: 1;
+  padding: 0 20px;
+  max-width: calc(100% - 320px); /* Considera largura dos anúncios + margem */
+}
+
+/* Wrapper do vídeo com tamanho maximizado */
+.video-wrapper1 {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* Mantém aspect ratio 16:9 */
+  margin-top: 20px;
+  background: #000;
+}
+
+.video-wrapper1 iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.video-title1 {
+  font-size: 24px;
+  color: #ffffff;
+  margin: 15px 0;
+}
+
+.video-description1 {
+  color: #cccccc;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Seção de anúncios fixa na direita */
+.ads-section1 {
+  width: 300px;
+  min-width: 300px; /* Garante largura mínima */
+  padding: 20px 10px;
+  background-color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-left: 1px solid #333;
+}
+
+.ad1 {
+  width: 300px;
+  height: 250px;
+  background: #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ad1 img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Responsividade ajustada */
+@media (max-width: 1200px) {
+  .container1 {
+    flex-direction: column;
+  }
+
+  .video-section1 {
+    max-width: 100%;
+    padding: 0 10px;
+  }
+
+  .ads-section1 {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    border-left: none;
+    border-top: 1px solid #333;
+  }
+
+  .ad1 {
+    margin: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-section1 {
+    padding: 0 5px;
+  }
+
+  .video-title1 {
+    font-size: 20px;
+  }
+}
+
+
+
+/* Contêiner Principal */
+.termos-de-uso {
+  max-width: 800px;
+  margin: 50px auto;
+  background-color: #2c2c2c;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Título Principal */
+.termos-de-uso h1 {
+  font-size: 2.5em;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ff5e5e;
+}
+
+/* Seções */
+.termos-de-uso h2 {
+  font-size: 1.8em;
+  color: #ff5e5e;
+  border-bottom: 2px solid #ff5e5e;
+  padding-bottom: 10px;
+  margin-top: 30px;
+}
+
+/* Parágrafos */
+.termos-de-uso p {
+  font-size: 1.1em;
+  margin-bottom: 20px;
+  color: #d0d0d0;
+}
+
+/* Links */
+.termos-de-uso a {
+  color: #1e90ff;
+  text-decoration: none;
+}
+
+.termos-de-uso a:hover {
+  text-decoration: underline;
+}
+
+/* Conteúdo Especial */
+.termos-de-uso strong {
+  color: #ffffff;
+}
+
+/* Botões */
+button {
+  background-color: #ff5e5e;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #e04c4c;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .termos-de-uso {
+    margin: 20px;
+    padding: 20px;
+  }
+
+  .termos-de-uso h1 {
+    font-size: 2em;
+  }
+
+  .termos-de-uso h2 {
+    font-size: 1.5em;
+  }
+
+  .termos-de-uso p {
+    font-size: 1em;
+  }
+}
+
+
+
+
+
+/* Contêiner Principal */
+.politica-de-privacidade {
+  max-width: 800px;
+  margin: 50px auto;
+  background-color: #2c2c2c;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Título Principal */
+.politica-de-privacidade h1 {
+  font-size: 2.5em;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ff5e5e;
+}
+
+/* Seções */
+.politica-de-privacidade h2 {
+  font-size: 1.8em;
+  color: #ff5e5e;
+  border-bottom: 2px solid #ff5e5e;
+  padding-bottom: 10px;
+  margin-top: 30px;
+}
+
+/* Parágrafos */
+.politica-de-privacidade p {
+  font-size: 1.1em;
+  margin-bottom: 20px;
+  color: #d0d0d0;
+}
+
+/* Links */
+.politica-de-privacidade a {
+  color: #1e90ff;
+  text-decoration: none;
+}
+
+.politica-de-privacidade a:hover {
+  text-decoration: underline;
+}
+
+/* Conteúdo Especial */
+.politica-de-privacidade strong {
+  color: #ffffff;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .politica-de-privacidade {
+    margin: 20px;
+    padding: 20px;
+  }
+
+  .politica-de-privacidade h1 {
+    font-size: 2em;
+  }
+
+  .politica-de-privacidade h2 {
+    font-size: 1.5em;
+  }
+
+  .politica-de-privacidade p {
+    font-size: 1em;
+  }
+}
+
+
+/* Contêiner Principal */
+.politica-de-cookies {
+  max-width: 800px;
+  margin: 50px auto;
+  background-color: #2c2c2c;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Título Principal */
+.politica-de-cookies h1 {
+  font-size: 2.5em;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ff5e5e;
+}
+
+/* Seções */
+.politica-de-cookies h2 {
+  font-size: 1.8em;
+  color: #ff5e5e;
+  border-bottom: 2px solid #ff5e5e;
+  padding-bottom: 10px;
+  margin-top: 30px;
+}
+
+/* Parágrafos */
+.politica-de-cookies p {
+  font-size: 1.1em;
+  margin-bottom: 20px;
+  color: #d0d0d0;
+}
+
+/* Contêiner Principal */
+.termo-de-consentimento {
+  max-width: 800px;
+  margin: 50px auto;
+  background-color: #2c2c2c;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Título Principal */
+.termo-de-consentimento h1 {
+  font-size: 2.5em;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ff5e5e;
+}
+
+
+/* Contêiner Principal */
+.aviso-conteudo-sensivel {
+  max-width: 800px;
+  margin: 50px auto;
+  background-color: #2c2c2c;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Título Principal */
+.aviso-conteudo-sensivel h1 {
+  font-size: 2.5em;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ff5e5e;
+}
+
+
+/* Contêiner Principal */
+.remocao-video {
+  max-width: 800px;
+  margin: 50px auto;
+  background-color: #2c2c2c;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Título Principal */
+.remocao-video h1 {
+  font-size: 2.5em;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ff5e5e;
+}
+
+/* Formulário */
+.remocao-video form {
+  display: flex;
+  flex-direction: column;
+}
+
+.remocao-video label {
+  margin-top: 10px;
+  font-weight: bold;
+  color: #ff5e5e;
+}
+
+.remocao-video input, .remocao-video textarea {
+  padding: 10px;
+  margin-top: 5px;
+  border-radius: 5px;
+  border: none;
+  background-color: #3a3a3a;
+  color: #f5f5f5;
+}
+
+.remocao-video button {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #ff5e5e;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.remocao-video button:hover {
+  background-color: #e04c4c;
+}
+
+
+
+.age-modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.95);
+  overflow: auto;
+}
+
+.age-modal-content {
+  background-color: #1a1a1a;
+  margin: 5% auto;
+  padding: 30px;
+  max-width: 600px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.age-modal-content h2 {
+  color: #fff;
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.age-modal-content p {
+  color: #ccc;
+  margin-bottom: 15px;
+  line-height: 1.6;
+}
+
+.age-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin: 30px 0;
+}
+
+.enter-button {
+  background-color: #e44242;
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%;
+  max-width: 400px;
+  transition: background-color 0.3s;
+}
+
+.enter-button:hover {
+  background-color: #c53232;
+}
+
+.leave-link {
+  color: #888;
+  text-decoration: none;
+}
+
+.leave-link:hover {
+  text-decoration: underline;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.protect-link {
+  color: #888;
+  text-decoration: none;
+}
+
+.protect-link:hover {
+  text-decoration: underline;
+}
+
+.rta-logo {
+  height: 30px;
+}
+
+/* CSS */
+.footer {
+  background-color: #1a1a1a;
+  padding: 2rem 0;
+  color: #888;
+  font-size: 0.9rem;
+  border-top: 1px solid #333;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.footer-links a {
+  color: #888;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: #1b6ec2;
+}
+
+.footer-copyright {
+  text-align: center;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .footer {
+    padding: 1.5rem 0;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+.content-removal-container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.content-removal-title {
+  color: #e57373;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.removal-form {
+  display: grid;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 12px;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background-color: #333333;
+  color: #ffffff;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #e57373;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.submit-button {
+  background-color: #e57373;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: fit-content;
+  justify-self: end;
+}
+
+.submit-button:hover {
+  background-color: #ef5350;
+}
+
+@media (max-width: 768px) {
+  .content-removal-container {
+    margin: 20px;
+    padding: 20px;
+  }
+}
+
+
+
+/* Tags Section */
+.tags-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 15px 0;
+  padding: 10px 0;
+  border-bottom: 1px solid #333;
+}
+
+.video-tag {
+  background-color: #333;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+  text-decoration: none;
+}
+
+.video-tag:hover {
+  background-color: #444;
+}
+
+/* Related Videos Section */
+.related-videos-section {
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+
+.related-videos-title {
+  font-size: 1.5rem;
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+/* Bottom Advertisement */
+.bottom-ad {
+  width: 100%;
+  height: 100px;
+  margin: 30px 0;
+  background-color: #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bottom-ad img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .tags-section {
+    margin: 10px 0;
+  }
+
+  .video-tag {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+  }
+
+  .related-videos-title {
+    font-size: 1.3rem;
+  }
+}
