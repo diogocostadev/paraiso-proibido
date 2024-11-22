@@ -19,7 +19,7 @@ public class RoboInsereVideosSeNaoExistir : BackgroundService
         Console.WriteLine("-=[Atualizador de vídeos iniciado]=-");
         _logger = logger;
         _httpClient = new HttpClient();
-        _connectionString = _configuration.GetConnectionString("conexao-delete");
+        _connectionString = _configuration.GetConnectionString("conexao-atualiza-se-nao-existir");
     }
     
     
