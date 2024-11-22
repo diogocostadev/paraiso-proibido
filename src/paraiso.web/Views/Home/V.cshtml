@@ -2,6 +2,14 @@
 @{
     ViewBag.Title = Model.Titulo;
     Layout = "_Layout";
+    
+    ViewData["Title"] = $"Paraíso Proibido - {Model.Titulo}";
+    ViewData["OgImage"] = $"https://www.paraisoproibido.com/images/{Model.DefaultThumbSrc}";
+    ViewData["OgUrl"] = "https://www.paraisoproibido.com";
+    ViewData["OgVideo"] = $"https://www.paraisoproibido.com/images/{Model.Embed}";
+    ViewData["TwitterImage"] = $"https://www.paraisoproibido.com/images/{Model.DefaultThumbSrc}";
+    ViewData["TwitterPlayer"] = $"https://www.paraisoproibido.com/images/{Model.Embed}";
+
 }
 
 <div class="container1">
