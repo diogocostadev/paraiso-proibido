@@ -33,15 +33,14 @@ public class ServicoVideosCache
     public ServicoVideosCache(
         IDistributedCache cache,
         ILogger<ServicoVideosCache> logger,
-        IConfiguration configuration,
+        IConfiguration _configuration,
         IHostApplicationLifetime applicationLifetime, IMemoryCache memoryCache)
     {
         _cache = cache;
         _memoryCache = memoryCache;
         
         _logger = logger;
-        _stringConexao =
-            "Host=212.56.47.25;Username=dbotprod;Password=P4r41s0Pr01b1d0;Database=videos;Maximum Pool Size=50;Timeout=30;Command Timeout=30";
+        _stringConexao = _configuration.GetConnectionString("conexao-site");
         _applicationLifetime = applicationLifetime;
 
         // Configuração do Circuit Breaker

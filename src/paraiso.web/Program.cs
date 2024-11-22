@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using paraiso.web.Middleware;
-using paraiso.web.Robo;
 using paraiso.web.Services;
 using StackExchange.Redis;
 
