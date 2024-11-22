@@ -35,15 +35,6 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<ServicoVideosCache>();
 
-if (builder.Configuration["robos:ativar"] == "true")
-{
-    builder.Services.AddSingleton<ServicoVideosCacheRobo>();
-}
-
-builder.Services.AddSingleton<ServicoVideosCacheRobo>();
-
-builder.Services.AddHostedService<CacheWarmingService>();
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
