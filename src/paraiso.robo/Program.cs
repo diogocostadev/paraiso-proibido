@@ -27,6 +27,8 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "VideoCache_";
 });
 
+builder.Services.AddHostedService<RoboPalavrasProibidas>();
+
 
 
 builder.Services.AddSingleton<ServiceAtualizaCache>();
@@ -41,11 +43,12 @@ builder.Services.AddHostedService<RoboAtualizaCategorias>();
 // Robo: AtualizaVideos
 builder.Services.AddHostedService<RoboInsereVideosSeNaoExistir>();
 
-// Robo: AtualizaBaseInteira
-builder.Services.AddHostedService<RoboAtualizaBaseInteira>();
+// Robo: AtualizaBaseInteira - julgo nao ser necessário esse robo por hora
+// builder.Services.AddHostedService<RoboAtualizaBaseInteira>();
 
 // Robo: AtualizaCache
 builder.Services.AddHostedService<RoboAtualizaCache>();
+
 
 var host = builder.Build();
 host.Run();

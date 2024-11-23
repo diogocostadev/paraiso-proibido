@@ -25,7 +25,9 @@ public class RoboAtualizaCategorias : BackgroundService
     private const int MAX_PARALLEL_CATEGORIES = 5;
 
     private Dictionary<string, List<int>> categoria_falhas = new Dictionary<string, List<int>>();
-
+    
+    private bool _atualizaView = false;
+    
     public RoboAtualizaCategorias(ILogger<RoboAtualizaCategorias> logger, IConfiguration _configuration)
     {
         _logger = logger;
@@ -75,12 +77,77 @@ public class RoboAtualizaCategorias : BackgroundService
                         await ProcessCategoryWithRetry(category.id, category.nome, category.ultimaPagina + 1, token);
                     });
 
+                if (_atualizaView)
+                {
+                    await RefreshMaterializedView(stoppingToken);
+                    _atualizaView = false;
+                }
+                
                 await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro durante a execução do worker");
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            }
+        }
+    }
+
+    private async Task RefreshMaterializedView(CancellationToken stoppingToken)
+    {
+        const int maxRetries = 3;
+        var currentTry = 0;
+        var baseDelay = TimeSpan.FromSeconds(5);
+
+        while (currentTry < maxRetries)
+        {
+            try
+            {
+                await using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync(stoppingToken);
+
+                // Define um timeout maior para o comando
+                await using var cmd = new NpgsqlCommand
+                {
+                    Connection = connection,
+                    CommandText = "REFRESH MATERIALIZED VIEW dev.videos_com_miniaturas_normal",
+                    CommandTimeout = 3600 // 1 hora
+                };
+
+                _logger.LogInformation("Iniciando atualização da materialized view (tentativa {Attempt}/{MaxRetries})",
+                    currentTry + 1, maxRetries);
+
+                await cmd.ExecuteNonQueryAsync(stoppingToken);
+                _logger.LogInformation("Materialized view atualizada com sucesso");
+                return;
+            }
+            catch (Exception ex) when (ex is PostgresException || ex is OperationCanceledException)
+            {
+                currentTry++;
+                if (currentTry >= maxRetries)
+                {
+                    _logger.LogError(ex,
+                        "Falha ao atualizar materialized view após {Retries} tentativas",
+                        maxRetries);
+                    throw;
+                }
+
+                var delay = baseDelay * (1 << currentTry); // Exponential backoff
+                _logger.LogWarning(ex,
+                    "Erro ao atualizar materialized view (tentativa {Attempt}/{MaxRetries}). Tentando novamente em {Delay} segundos",
+                    currentTry,
+                    maxRetries,
+                    delay.TotalSeconds);
+
+                try
+                {
+                    await Task.Delay(delay, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Atualização da materialized view cancelada pelo usuário");
+                    throw;
+                }
             }
         }
     }
