@@ -128,6 +128,11 @@ public class HomeController : Controller
         return View();
     }
     
+    public IActionResult ComplianceStatement()
+    {
+        return View();
+    }
+    
     public IActionResult PoliticaDePrivacidade()
     {
         return View();
