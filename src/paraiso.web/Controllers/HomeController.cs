@@ -31,6 +31,9 @@ public class HomeController : Controller
 
             await Task.WhenAll(categoriasTask, resultadoTask);
             
+            ViewData["categoriaId"] = catid;
+            ViewData["termo"] = b;
+            
             ViewData["Categorias"] = categoriasTask.Result;
             return View(resultadoTask.Result);
         }
