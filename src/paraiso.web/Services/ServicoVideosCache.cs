@@ -297,7 +297,8 @@ public class ServicoVideosCache
             // Se não estiver em cache, busca do banco usando circuit breaker
             return await _circuitBreaker.ExecuteAsync(async () =>
             {
-                var resultado = await ObterVideosPorTermoPaginadosDoBanco(termo, pagina, tamanhoPagina);
+                //var resultado = await ObterVideosPorTermoPaginadosDoBanco(termo, pagina, tamanhoPagina);
+                var resultado = await BuscarVideosAsync(termo, pagina, tamanhoPagina);
                 await ArmazenarEmCache(chaveCache, resultado);
                 return resultado;
             });
@@ -309,71 +310,41 @@ public class ServicoVideosCache
         }
     }
 
-    private async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoPaginadosDoBanco(string termo, int pagina, int tamanhoPagina)
+    //Buscar videos por Titulo
+    public async Task<ResultadoPaginado<VideoBase>> BuscarVideosAsync(
+        string busca, 
+        int pagina = 1, 
+        int tamanhoPagina = 20, 
+        CancellationToken cancellationToken = default)
     {
+        
+        busca = string.Join(" ", 
+            busca.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim())
+                .Where(t => !string.IsNullOrEmpty(t)));
+        
         using var conexao = new NpgsqlConnection(_stringConexao);
-        await conexao.OpenAsync();
+        await conexao.OpenAsync(cancellationToken);
+
+        // Obtém o total de registros
+        await using var cmdTotal = new NpgsqlCommand(Queries.BuscaVideos.ObterTotal, conexao);
+        cmdTotal.Parameters.AddWithValue("@Busca", busca.ToLower());
+        var total = Convert.ToInt32(await cmdTotal.ExecuteScalarAsync(cancellationToken));
 
         var offset = (pagina - 1) * tamanhoPagina;
+        
+        // Obtém os vídeos paginados
+        await using var cmdVideos = new NpgsqlCommand(Queries.BuscaVideos.ObterVideos, conexao);
+        cmdVideos.Parameters.AddWithValue("@Busca", busca.ToLower());
+        cmdVideos.Parameters.AddWithValue("@Limite", tamanhoPagina);
+        cmdVideos.Parameters.AddWithValue("@Offset", offset);
 
-        // Consulta para obter o total de registros
-        var consultaTotal = @"
-        WITH unique_videos AS (
-            SELECT DISTINCT vi.id
-            FROM dev.videos_com_miniaturas_normal vi
-            INNER JOIN dev.video_termos vt ON vi.id = vt.video_id
-            INNER JOIN dev.termos te ON vt.termo_id = te.id
-            WHERE te.termo LIKE @Termo
-        )
-        SELECT count(vi.*)
-        FROM dev.videos_com_miniaturas_normal vi
-        INNER JOIN unique_videos uv ON vi.id = uv.id";
-
-        using var comandoTotal = new NpgsqlCommand(consultaTotal, conexao);
-        comandoTotal.Parameters.AddWithValue("@Termo", $"%{termo}%");
-        var total = Convert.ToInt32(await comandoTotal.ExecuteScalarAsync());
-
-        // Consulta paginada com miniaturas agregadas
-        var consultaVideos = @"
-        WITH unique_videos AS (
-            SELECT DISTINCT vi.id
-            FROM dev.videos_com_miniaturas_normal vi
-            INNER JOIN dev.video_termos vt ON vi.id = vt.video_id
-            INNER JOIN dev.termos te ON vt.termo_id = te.id
-            WHERE te.termo LIKE @Termo
-        )
-        SELECT * FROM dev.videos_com_miniaturas_normal vi
-        INNER JOIN unique_videos uv ON vi.id = uv.id
-        ORDER BY vi.data_adicionada DESC
-        OFFSET @Offset LIMIT @TamanhoPagina";
-
+        await using var reader = await cmdVideos.ExecuteReaderAsync(cancellationToken);
         var videos = new List<VideoBase>();
-        using (var comando = new NpgsqlCommand(consultaVideos, conexao))
+
+        while (await reader.ReadAsync(cancellationToken))
         {
-            comando.Parameters.AddWithValue("@Termo", $"%{termo}%");
-            comando.Parameters.AddWithValue("@Offset", offset);
-            comando.Parameters.AddWithValue("@TamanhoPagina", tamanhoPagina);
-
-            using var leitor = await comando.ExecuteReaderAsync();
-            while (await leitor.ReadAsync())
-            {
-                var miniaturasJson = leitor["miniaturas"] as string;
-                var miniaturas = string.IsNullOrEmpty(miniaturasJson)
-                    ? new List<Miniaturas>()
-                    : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
-
-                videos.Add(new VideoBase
-                {
-                    Id = leitor.GetString(0),
-                    Titulo = leitor.GetString(1),
-                    DuracaoSegundos = leitor.GetInt32(2),
-                    Embed = leitor.GetString(3),
-                    DefaultThumbSize = leitor.GetString(4),
-                    DefaultThumbSrc = leitor.GetString(5),
-                    DuracaoMinutos = leitor.GetString(6),
-                    Miniaturas = miniaturas
-                });
-            }
+            videos.Add(MapearVideo(reader));
         }
 
         return new ResultadoPaginado<VideoBase>
@@ -386,7 +357,26 @@ public class ServicoVideosCache
         };
     }
 
+    private static VideoBase MapearVideo(NpgsqlDataReader reader)
+    {
+        var miniaturasJson = reader["miniaturas"] as string;
+        var miniaturas = string.IsNullOrEmpty(miniaturasJson)
+            ? new List<Miniaturas>()
+            : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
 
+        return new VideoBase
+        {
+            Id = reader.GetString(0),
+            Titulo = reader.GetString(1),
+            DuracaoSegundos = reader.GetInt32(2),
+            Embed = reader.GetString(3),
+            DefaultThumbSize = reader.GetString(4),
+            DefaultThumbSrc = reader.GetString(5),
+            DuracaoMinutos = reader.GetString(6),
+            Miniaturas = miniaturas
+        };
+    }
+    
 
     //Listagem por categoria
     public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorCategoriaAsync(int categoriaId, int pagina = 1, int tamanhoPagina = 36)
@@ -498,7 +488,9 @@ public class ServicoVideosCache
         };
     }
 
+    
 
+    
     //V
     public async Task<VideoBase> ObterVideoPorIdAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -639,7 +631,7 @@ public class ServicoVideosCache
 
         return videosRelacionados;
     }
-    
+
     private static class Queries
     {
         public const string VideoBase = @"
@@ -656,7 +648,7 @@ public class ServicoVideosCache
             FROM videos.dev.video_termos vt 
             INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
             WHERE vt.video_id = @Id";
-        
+
         public static class VideosRelacionados
         {
             public const string ObterVideosRelacionadosBasicos = @"
@@ -682,5 +674,41 @@ public class ServicoVideosCache
                     vi.data_adicionada DESC
                 LIMIT 12";
         }
+
+        public static class BuscaVideos
+        {
+            public const string ObterTotal = @"
+            WITH termos_busca AS (
+                SELECT unnest(string_to_array(LOWER(@Busca), ' ')) as termo
+            )
+            SELECT COUNT(DISTINCT v.id)
+            FROM videos.dev.videos_com_miniaturas_normal v
+            WHERE  EXISTS (
+                SELECT 1 FROM termos_busca tb
+                WHERE LOWER(v.titulo) LIKE '%' || tb.termo || '%'
+            )";
+
+            public const string ObterVideos = @"
+            WITH termos_busca AS (
+                SELECT unnest(string_to_array(LOWER(@Busca), ' ')) as termo
+            ),
+            videos_matches AS (
+                SELECT 
+                    v.id,
+                    COUNT(DISTINCT tb.termo) as matches_count
+                FROM videos.dev.videos_com_miniaturas_normal v
+                CROSS JOIN termos_busca tb
+                WHERE LOWER(v.titulo) LIKE '%' || tb.termo || '%'
+                GROUP BY v.id
+            )
+            SELECT v.*
+            FROM videos.dev.videos_com_miniaturas_normal v
+            INNER JOIN videos_matches vm ON v.id = vm.id
+            ORDER BY 
+                vm.matches_count DESC,
+                v.data_adicionada DESC
+            LIMIT @Limite OFFSET @Offset";
+        }
     }
 }
+
