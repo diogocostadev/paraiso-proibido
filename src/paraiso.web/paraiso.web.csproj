@@ -35,8 +35,4 @@
       <None Remove="Views\Home\V.cshtml.css" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="wwwroot\img\" />
-    </ItemGroup>
-
 </Project>

@@ -1,0 +1,46 @@
+@{
+    ViewData["Title"] = "Página não encontrada";
+}
+
+<div class="container text-center mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="error-template">
+                <h1>Oops!</h1>
+                <h2>404 - Página não encontrada</h2>
+                <div class="error-details my-4">
+                    Desculpe, ocorreu um erro. A página solicitada não foi encontrada!
+                </div>
+                <div class="error-actions">
+                    <a href="/" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-home"></span>
+                        Voltar para Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .error-template {
+            padding: 40px 15px;
+        }
+        .error-template h1 {
+            font-size: 8rem;
+            color: #444;
+        }
+        .error-template h2 {
+            font-size: 2.5rem;
+            color: #666;
+        }
+        .error-details {
+            font-size: 1.2rem;
+            color: #888;
+        }
+        .error-actions {
+            margin-top: 30px;
+        }
+    </style>
+}

@@ -53,6 +53,14 @@ app.UseRouting();
 
 app.UseAuthorization();
 
+#region "404
+
+app.UseStatusCodePagesWithReExecute("/Error/NotFound");
+
+#endregion
+
+
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
