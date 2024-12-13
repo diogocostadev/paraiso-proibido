@@ -1,0 +1,19 @@
+
+@model List<Categoria>
+
+<li class="dropdown">
+    <a href="#" class="dropbtn">Categorias</a>
+    <div class="dropdown-content">
+        @foreach (var categoria in Model)
+        {
+            if (categoria.Id > 0)
+            {
+                <a asp-route-catid="@categoria.Id" asp-action="Index" asp-controller="Home">@categoria.Nome</a>
+            }
+            else
+            {
+                <a asp-action="Categorias" asp-controller="Home">@categoria.Nome</a>
+            }
+        }
+    </div>
+</li>

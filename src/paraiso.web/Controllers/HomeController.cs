@@ -5,6 +5,8 @@ using paraiso.web.Services;
 
 namespace paraiso.web.Controllers;
 
+
+
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
@@ -19,21 +21,33 @@ public class HomeController : Controller
     }
     
     
-    public async Task<IActionResult> Index(int p = 1, int t = 36, string b = "", int catid = 0)
+
+    [Route("/")]
+    public async Task<IActionResult> Index(
+        string duracao, 
+        string periodo, 
+        string ordem,
+        int p = 1, 
+        int t = 36, 
+        string b = "", 
+        int catid = 0)
     {
         ViewBag.b = b;
-        
+    
         try
         {
-            // Carrega categorias e container em paralelo
             var categoriasTask = CarregarCategorias();
-            var resultadoTask = CarregarVideos(p, t, b, catid);
+            var resultadoTask = _servicoVideos.ObterVideosComFiltrosAsync(
+                b, duracao, periodo, ordem, p, t, catid);
 
             await Task.WhenAll(categoriasTask, resultadoTask);
-            
+        
             ViewData["categoriaId"] = catid;
             ViewData["termo"] = b;
-            
+            ViewData["duracao"] = duracao;
+            ViewData["periodo"] = periodo;
+            ViewData["ordem"] = ordem;
+        
             ViewData["Categorias"] = categoriasTask.Result;
             return View(resultadoTask.Result);
         }
@@ -48,7 +62,7 @@ public class HomeController : Controller
             });
         }
     }
-
+    
     private async Task<ResultadoPaginado<VideoBase>> CarregarVideos(int pagina, int tamanhoPagina, string termo,
         int categoriaId)
     {
@@ -79,6 +93,7 @@ public class HomeController : Controller
         return categorias;
     }
     
+    [Route("/categorias")]
     public async Task<IActionResult> Categorias(int p = 1, int t = 36, string b = "")
     {
         ViewBag.b = b;
@@ -114,7 +129,8 @@ public class HomeController : Controller
         }
     }
 
-    public async Task<IActionResult> V(string id, int p)
+    [Route("/video/{id}")]
+    public async Task<IActionResult> V(string id)
     {
         //Layout
         var categorias = (await _servicoVideos.ObterCategoria()).Where(o => o.Mostrar.HasValue && o.Mostrar.Value).ToList();
@@ -126,40 +142,48 @@ public class HomeController : Controller
         return View(resultado);
     }
 
+    [Route("/termos-de-uso")]
     public IActionResult TermoDeUso()
     {
         return View();
     }
     
+    [Route("/compliance-statement")]
     public IActionResult ComplianceStatement()
     {
         return View();
     }
     
+    [Route("/politica-de-privacidade")]
     public IActionResult PoliticaDePrivacidade()
     {
         return View();
     }
     
+    [Route("/aviso-conteudo-sensivel")]
     public IActionResult AvisoConteudoSensivel()
     {
         return View();
     }
     
+    [Route("/politica-de-cookie")]
     public IActionResult PoliticaDeCookie()
     {
         return View();
     }
     
+    [Route("/remocao-de-video")]
     public IActionResult RemocaoDeVideo()
     {
         return View();
     }
 
+    [Route("/termo-de-consentimento")]
     public IActionResult TermoDeConsentimento()
     {
         return View();
     }
+    
     
     public async Task<IActionResult> DetalhesEstrelas()
     {

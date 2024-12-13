@@ -29,7 +29,7 @@ public class ServicoVideosCache
     private int _tempoSlidingMinutos = 1;
 
     public Func<ResultadoPaginado<VideoBase>, Task> _onPaginaCacheada;
-    
+
     public ServicoVideosCache(
         IDistributedCache cache,
         ILogger<ServicoVideosCache> logger,
@@ -38,7 +38,7 @@ public class ServicoVideosCache
     {
         _cache = cache;
         _memoryCache = memoryCache;
-        
+
         _logger = logger;
         _stringConexao = _configuration.GetConnectionString("conexao-site");
         _applicationLifetime = applicationLifetime;
@@ -61,6 +61,169 @@ public class ServicoVideosCache
     }
 
 
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosComFiltrosAsync(
+        string b,
+        string duracao,
+        string periodo,
+        string ordem,
+        int pagina = 1,
+        int tamanhoPagina = 36,
+        int categoriaId = 0)
+    {
+        string chaveCache = $"videos_filtrados_{b}_{duracao}_{periodo}_{ordem}_{pagina}_{tamanhoPagina}_{categoriaId}";
+
+        try
+        {
+            if (_memoryCache?.TryGetValue<ResultadoPaginado<VideoBase>>(chaveCache, out var resultadoMemoria) == true)
+            {
+                return resultadoMemoria;
+            }
+
+            return await _circuitBreaker.ExecuteAsync(async () =>
+            {
+                using var conexao = new NpgsqlConnection(_stringConexao);
+                await conexao.OpenAsync();
+
+                var consultaBase = @"
+                WITH filtered_videos AS (
+                    SELECT v.* 
+                    FROM dev.videos_com_miniaturas_normal v
+                    WHERE 1=1
+                    -- Filtro de duração
+                    AND CASE 
+                        WHEN @DuracaoFiltro = '0-10' THEN duracao_segundos <= 600
+                        WHEN @DuracaoFiltro = '10-20' THEN duracao_segundos > 600 AND duracao_segundos <= 1200
+                        WHEN @DuracaoFiltro = '20-30' THEN duracao_segundos > 1200 AND duracao_segundos <= 1800
+                        WHEN @DuracaoFiltro = '30+' THEN duracao_segundos > 1800
+                        ELSE TRUE
+                    END
+                    -- Filtro de período
+                    AND CASE 
+                        WHEN @PeriodoFiltro = 'today' THEN data_adicionada::date = CURRENT_DATE
+                        WHEN @PeriodoFiltro = 'week' THEN data_adicionada >= (CURRENT_DATE - INTERVAL '7 days')
+                        WHEN @PeriodoFiltro = 'month' THEN data_adicionada >= (CURRENT_DATE - INTERVAL '30 days')
+                        ELSE TRUE
+                    END
+                    -- Filtro de busca
+                    AND CASE 
+                        WHEN @Busca <> '' THEN LOWER(titulo) LIKE '%' || LOWER(@Busca) || '%'
+                        ELSE TRUE
+                    END
+                    -- Filtro de categoria
+                    AND CASE 
+                        WHEN @CategoriaId > 0 THEN 
+                            EXISTS (SELECT 1 FROM dev.video_categorias vc 
+                                   WHERE vc.video_id = v.id AND vc.categoria_id = @CategoriaId)
+                        ELSE TRUE
+                    END
+                ),
+                ordered_videos AS (
+                    SELECT *, 1 as ordem_tipo FROM filtered_videos
+                    WHERE @Ordem IN ('newest', 'oldest')
+                    UNION ALL
+                    SELECT *, 2 as ordem_tipo FROM filtered_videos
+                    WHERE @Ordem IN ('longest', 'shortest')
+                    UNION ALL
+                    SELECT *, 3 as ordem_tipo FROM filtered_videos
+                    WHERE @Ordem IS NULL OR @Ordem NOT IN ('newest', 'oldest', 'longest', 'shortest')
+                )";
+
+                // Consulta de contagem
+                var consultaTotal = "SELECT COUNT(*) FROM filtered_videos";
+
+                // Consulta principal com ordenação
+                var consultaPrincipal = @"
+                SELECT * FROM ordered_videos 
+                ORDER BY 
+                    ordem_tipo,
+                    CASE WHEN @Ordem = 'newest' THEN data_adicionada END DESC NULLS LAST,
+                    CASE WHEN @Ordem = 'oldest' THEN data_adicionada END ASC NULLS LAST,
+                    CASE WHEN @Ordem = 'longest' THEN duracao_segundos END DESC NULLS LAST,
+                    CASE WHEN @Ordem = 'shortest' THEN duracao_segundos END ASC NULLS LAST,
+                    data_adicionada DESC
+                OFFSET @Offset LIMIT @TamanhoPagina";
+
+                // Executa contagem
+                using var cmdTotal = new NpgsqlCommand(consultaBase + consultaTotal, conexao);
+                ConfigurarParametros(cmdTotal, b, duracao, periodo, ordem, categoriaId, 0, 0);
+                var total = Convert.ToInt32(await cmdTotal.ExecuteScalarAsync());
+
+                // Executa consulta principal
+                using var cmdVideos = new NpgsqlCommand(consultaBase + consultaPrincipal, conexao);
+                ConfigurarParametros(cmdVideos, b, duracao, periodo, ordem, categoriaId, pagina, tamanhoPagina);
+
+                var videos = new List<VideoBase>();
+                using var reader = await cmdVideos.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    videos.Add(MapearVideo(reader));
+                }
+
+                var resultado = new ResultadoPaginado<VideoBase>
+                {
+                    Itens = videos,
+                    PaginaAtual = pagina,
+                    TamanhoPagina = tamanhoPagina,
+                    TotalItens = total,
+                    TotalPaginas = (int)Math.Ceiling(total / (double)tamanhoPagina)
+                };
+
+                await ArmazenarEmCache(chaveCache, resultado);
+                return resultado;
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter vídeos com filtros");
+            throw;
+        }
+    }
+
+    private void ConfigurarParametros(NpgsqlCommand cmd, string busca, string duracao, string periodo,
+        string ordem, int categoriaId, int pagina, int tamanhoPagina)
+    {
+        cmd.Parameters.AddWithValue("@Busca", busca ?? "");
+        cmd.Parameters.AddWithValue("@DuracaoFiltro", duracao ?? "");
+        cmd.Parameters.AddWithValue("@PeriodoFiltro", periodo ?? "");
+        cmd.Parameters.AddWithValue("@Ordem", ordem ?? "newest");
+        cmd.Parameters.AddWithValue("@CategoriaId", categoriaId);
+
+        if (pagina > 0)
+        {
+            cmd.Parameters.AddWithValue("@Offset", (pagina - 1) * tamanhoPagina);
+            cmd.Parameters.AddWithValue("@TamanhoPagina", tamanhoPagina);
+        }
+    }
+
+
+    public async Task<IEnumerable<(string Id, DateTime DataAdicionada)>> ObterVideosSitemapAsync(int offset, int limit)
+    {
+        using var conexao = new NpgsqlConnection(_stringConexao);
+        await conexao.OpenAsync();
+
+        var query = @"
+        SELECT id, data_adicionada 
+        FROM dev.videos 
+        ORDER BY data_adicionada DESC 
+        OFFSET @Offset LIMIT @Limit";
+
+        using var cmd = new NpgsqlCommand(query, conexao);
+        cmd.Parameters.AddWithValue("@Offset", offset);
+        cmd.Parameters.AddWithValue("@Limit", limit);
+
+        var resultados = new List<(string Id, DateTime DataAdicionada)>();
+    
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            resultados.Add((
+                reader.GetString(0),
+                reader.GetDateTime(1)
+            ));
+        }
+
+        return resultados;
+    }
     public async Task<List<Categoria>> ObterCategoria()
     {
         try
