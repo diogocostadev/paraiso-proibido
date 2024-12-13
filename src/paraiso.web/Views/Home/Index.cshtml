@@ -5,6 +5,47 @@
 }
 
 <div class="container">
+
+    <div class="search-filter-container">
+        <form method="get" action="@Url.Action("Index")" class="search-filter-form">
+            <div class="search-section">
+                <input type="text"
+                       class="search-input"
+                       placeholder="Pesquisar vídeos..."
+                       name="b"
+                       id="b"
+                       value="@ViewData["termo"]" />
+            </div>
+
+            <div class="filter-section">
+                <select name="duracao" class="filter-select">
+                    <option value="">Duração</option>
+                    <option value="0-10" selected="@(ViewData["duracao"]?.ToString() == "0-10")">0-10 minutos</option>
+                    <option value="10-20" selected="@(ViewData["duracao"]?.ToString() == "10-20")">10-20 minutos</option>
+                    <option value="20-30" selected="@(ViewData["duracao"]?.ToString() == "20-30")">20-30 minutos</option>
+                    <option value="30+" selected="@(ViewData["duracao"]?.ToString() == "30+")">+30 minutos</option>
+                </select>
+
+                <select name="periodo" class="filter-select">
+                    <option value="">Data</option>
+                    <option value="today" selected="@(ViewData["periodo"]?.ToString() == "today")">Hoje</option>
+                    <option value="week" selected="@(ViewData["periodo"]?.ToString() == "week")">Esta semana</option>
+                    <option value="month" selected="@(ViewData["periodo"]?.ToString() == "month")">Este mês</option>
+                    <option value="all" selected="@(ViewData["periodo"]?.ToString() == "all")">Todo tempo</option>
+                </select>
+
+                <select name="ordem" class="filter-select">
+                    <option value="newest" selected="@(ViewData["ordem"]?.ToString() == "newest")">Mais recentes primeiro</option>
+                    <option value="oldest" selected="@(ViewData["ordem"]?.ToString() == "oldest")">Mais antigos primeiro</option>
+                    <option value="longest" selected="@(ViewData["ordem"]?.ToString() == "longest")">Mais longos primeiro</option>
+                    <option value="shortest" selected="@(ViewData["ordem"]?.ToString() == "shortest")">Mais curtos primeiro</option>
+                </select>
+            </div>
+
+            <button type="submit" class="search-filter-button">Buscar</button>
+        </form>
+    </div>
+    
     <div class="videos">
         @if (videosPagina.Any())
         {
@@ -13,8 +54,7 @@
                 <div class="video-item">
 
                     <a asp-action="V"
-                       asp-route-id="@video.Id"
-                       asp-route-p="@Model.PaginaAtual">
+                       asp-route-id="@video.Id">
                         <img src="@video.DefaultThumbSrc" alt="@video.TituloFormatado" class="video-thumb"
                              data-thumbs="@string.Join(",", @video.Miniaturas.Select(t => t.Src))"/>
                         <div class="video-time">@video.DuracaoMinutos</div>
@@ -24,12 +64,21 @@
             }
         }
     </div>
+    
     @if (Model.TotalPaginas > 1)
     {
         <div class="pagination2">
             @if (Model.TemPaginaAnterior)
             {
-                <a href="@Url.Action("Index", new { p = Model.PaginaAtual - 1, t = Model.TamanhoPagina, catid = ViewData["categoriaId"], b = ViewData["termo"]  })"
+                <a href="@Url.Action("Index", new {
+                             p = Model.PaginaAtual - 1,
+                             t = Model.TamanhoPagina,
+                             catid = ViewData["categoriaId"],
+                             b = ViewData["termo"],
+                             duracao = ViewData["duracao"],
+                             periodo = ViewData["periodo"],
+                             ordem = ViewData["ordem"]
+                         })"
                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                     Anterior
                 </a>
@@ -37,7 +86,15 @@
 
             @for (int i = Math.Max(1, Model.PaginaAtual - 2); i <= Math.Min(Model.TotalPaginas, Model.PaginaAtual + 2); i++)
             {
-                <a href="@Url.Action("Index", new { p = i, t = Model.TamanhoPagina, catid = ViewData["categoriaId"], b = ViewData["termo"]  })"
+                <a href="@Url.Action("Index", new {
+                             p = i,
+                             t = Model.TamanhoPagina,
+                             catid = ViewData["categoriaId"],
+                             b = ViewData["termo"],
+                             duracao = ViewData["duracao"],
+                             periodo = ViewData["periodo"],
+                             ordem = ViewData["ordem"]
+                         })"
                    class="px-4 py-2 @(i == Model.PaginaAtual ? "bg-blue-600 text-white" : "bg-gray-200") rounded hover:bg-blue-500 hover:text-white">
                     @i
                 </a>
@@ -45,7 +102,15 @@
 
             @if (Model.TemProximaPagina)
             {
-                <a href="@Url.Action("Index", new { p = Model.PaginaAtual + 1, t = Model.TamanhoPagina, catid = ViewData["categoriaId"], b = ViewData["termo"] })"
+                <a href="@Url.Action("Index", new {
+                             p = Model.PaginaAtual + 1,
+                             t = Model.TamanhoPagina,
+                             catid = ViewData["categoriaId"],
+                             b = ViewData["termo"],
+                             duracao = ViewData["duracao"],
+                             periodo = ViewData["periodo"],
+                             ordem = ViewData["ordem"]
+                         })"
                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                     Próxima
                 </a>
@@ -59,8 +124,6 @@
         <script>(AdProvider = window.AdProvider || []).push({"serve": {}});</script>
     </div>
 </div>
-
-
 
 <script>
     document.querySelectorAll('.video-thumb').forEach(function(thumb) {

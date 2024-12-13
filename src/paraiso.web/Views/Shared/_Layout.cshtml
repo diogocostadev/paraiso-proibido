@@ -70,32 +70,11 @@
             </div>
         </div>
     </header>
-    
+
     <nav class="navbar">
         <ul>
             <li><a href="/">Home</a></li>
-            <li class="dropdown">
-                <a href="#" class="dropbtn">Categorias</a>
-                <div class="dropdown-content">
-                    @if (ViewData["Categorias"] != null)
-                    {
-                        var categorias = ViewData["Categorias"] as List<Categoria>;
-                        foreach (var categoria in categorias)
-                        {
-                            if (@categoria.Id > 0)
-                            {
-                                <a asp-route-catid="@categoria.Id" asp-action="Index" asp-controller="Home">@categoria.Nome</a>
-                            }
-                            else
-                            {
-                                <a asp-action="Categorias" asp-controller="Home">@categoria.Nome</a>
-                            }
-                        }
-                    }
-                </div>
-            </li>
-            @* <li><a href="/videos">Vídeos</a></li> *@
-            @* <li><a href="/privacy">Privacy</a></li> *@
+            @await Component.InvokeAsync("CategoriesMenu")
         </ul>
     </nav>
     
@@ -136,8 +115,7 @@
             </div>
 
             <div class="footer-links">
-                <a href="/como-proteger-menores" class="protect-link">como proteger menores</a>
-                <img src="/img/88x31_RTA-5042-1996-1400-1577-RTA_b.gif" alt="RTA Logo" class="rta-logo" />
+                <img src="/img/rta_nightmode.component.png" alt="RTA Logo" class="rta-logo" />
             </div>
         </div>
     </div>
