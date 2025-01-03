@@ -115,7 +115,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
 
     private async Task SyncVideos()
     {
-        int currentPage = 1;
+        int currentPage = 27;
         bool shouldContinue = true;
 
         while (shouldContinue)
@@ -299,7 +299,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         {
             VideoId = videoId,
             TermoId = existingTerms[t.termo]
-        }).ToList();
+        }).Distinct().ToList();
 
         // Insere todas as associações de uma vez
         const string videoTermSql = @"
