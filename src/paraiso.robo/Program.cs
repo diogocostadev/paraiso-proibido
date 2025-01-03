@@ -32,7 +32,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddHostedService<RoboInsereVideosSeNaoExistirEporner>();
 
 
-/*
+
 builder.Services.AddHostedService<RoboPalavrasProibidas>();
 
 builder.Services.AddSingleton<ServiceAtualizaCache>();
@@ -51,7 +51,7 @@ builder.Services.AddHostedService<RoboInsereVideosSeNaoExistir>();
 
 // Robo: AtualizaCache
 builder.Services.AddHostedService<RoboAtualizaCache>();
-*/
+
 
 var host = builder.Build();
 host.Run();

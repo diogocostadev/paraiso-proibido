@@ -115,7 +115,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
 
     private async Task SyncVideos()
     {
-        int currentPage = 27;
+        int currentPage = 1;
         bool shouldContinue = true;
 
         while (shouldContinue)
