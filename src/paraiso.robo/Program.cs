@@ -1,4 +1,5 @@
 using paraiso.robo;
+using paraiso.robo.Eporner;
 using StackExchange.Redis;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -27,12 +28,14 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "VideoCache_";
 });
 
+//robo eporner
+builder.Services.AddHostedService<RoboInsereVideosSeNaoExistirEporner>();
+
+
+
 builder.Services.AddHostedService<RoboPalavrasProibidas>();
 
-
-
 builder.Services.AddSingleton<ServiceAtualizaCache>();
-
 
 // Robo: DeletedVideos
 builder.Services.AddHostedService<RoboDeletaVideos>();
