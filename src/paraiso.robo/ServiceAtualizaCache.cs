@@ -15,15 +15,16 @@ namespace paraiso.robo;
 public class ServiceAtualizaCache
 {
 
-    private readonly TimeSpan _memoryCacheDuration = TimeSpan.FromSeconds(30);
-
+    //tempo em horas
+    public int _tempoCacheCategoria = 24;
+    public int _tempoCachePagina = 5;
+    
     private readonly IDistributedCache _cache;
     private readonly ILogger<ServiceAtualizaCache> _logger;
     private readonly string _stringConexao;
     private readonly AsyncCircuitBreakerPolicy _circuitBreaker;
 
     private bool _usarCompressao = true;
-    private int _tempoExpiracaoMinutos = 10;
     private int _tempoSlidingMinutos = 1;
 
     public Func<ResultadoPaginado<VideoBase>, Task> _onPaginaCacheada;
@@ -90,7 +91,7 @@ public class ServiceAtualizaCache
                     });
                 }
 
-                await ArmazenarEmCache(chaveCache, categorias);
+                await ArmazenarEmCache(chaveCache, categorias, _tempoCacheCategoria);
                 return categorias;
             });
         }
@@ -103,21 +104,26 @@ public class ServiceAtualizaCache
 
     #region "--=[Métodos para deixar dados em cache]=--"
 
-    private async Task ArmazenarEmCache<T>(string chave, T dados)
+    private async Task ArmazenarEmCache<T>(string chave, T dados, int ? tempoHoras = null)
     {
         var jsonDados = JsonSerializer.Serialize(dados);
         byte[] dadosComprimidos = _usarCompressao
             ? ComprimirDados(Encoding.UTF8.GetBytes(jsonDados))
             : Encoding.UTF8.GetBytes(jsonDados);
 
-        var opcoesCache = new DistributedCacheEntryOptions
+        if (tempoHoras.HasValue)
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_tempoExpiracaoMinutos),
-            SlidingExpiration = TimeSpan.FromMinutes(_tempoSlidingMinutos)
-        };
-
-        await _cache.SetAsync(chave, dadosComprimidos, opcoesCache);
-        
+            var opcoesCache = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(tempoHoras.Value)
+            };
+            
+            await _cache.SetAsync(chave, dadosComprimidos, opcoesCache);
+        }
+        else
+        {
+            await _cache.SetAsync(chave, dadosComprimidos);
+        }
     }
 
     private byte[] ComprimirDados(byte[] dados)
@@ -146,31 +152,32 @@ public class ServiceAtualizaCache
     #endregion
 
 
-    public async Task<ResultadoPaginado<VideoBase>> ObterVideosAsync(int pagina = 1, int tamanhoPagina = 36)
+    public async Task<ResultadoPaginado<VideoBase>> ObterVideosAsync(        
+        string b,
+        string duracao,
+        string periodo,
+        string ordem,
+        int pagina = 1,
+        int tamanhoPagina = 36,
+        int categoriaId = 0)
     {
-        string chaveCache = $"videos_pagina_{pagina}_{tamanhoPagina}";
-
+        //string chaveCache = $"videos_pagina_{pagina}_{tamanhoPagina}";
+        string chaveCache = $"videos_filtrados_{b}_{duracao}_{periodo}_{ordem}_{pagina}_{tamanhoPagina}_{categoriaId}";
+        
         try
         {
-
             // Continua com o Redis e banco de dados...
             var dadosCache = await _cache.GetAsync(chaveCache);
             if (dadosCache != null)
             {
-                var dadosDescomprimidos = _usarCompressao
-                    ? DescomprimirDados(dadosCache)
-                    : dadosCache;
-
-                var resultado = JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(
-                    Encoding.UTF8.GetString(dadosDescomprimidos));
-                
-                return resultado;
+                var dadosDescomprimidos = _usarCompressao ? DescomprimirDados(dadosCache) : dadosCache;
+                return JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(Encoding.UTF8.GetString(dadosDescomprimidos));
             }
 
             return await _circuitBreaker.ExecuteAsync(async () =>
             {
                 var resultado = await ObterVideosPaginadosDoBanco(pagina, tamanhoPagina);
-                await ArmazenarEmCache(chaveCache, resultado);
+                await ArmazenarEmCache(chaveCache, resultado, _tempoCachePagina);
 
                 if (_onPaginaCacheada != null)
                 {
@@ -216,9 +223,7 @@ public class ServiceAtualizaCache
                 while (await leitor.ReadAsync())
                 {
                     var miniaturasJson = leitor["miniaturas"] as string;
-                    var miniaturas = string.IsNullOrEmpty(miniaturasJson)
-                        ? new List<Miniaturas>()
-                        : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
+                    var miniaturas = string.IsNullOrEmpty(miniaturasJson) ? new List<Miniaturas>() : JsonConvert.DeserializeObject<List<Miniaturas>>(miniaturasJson);
 
                     videos.Add(new VideoBase
                     {
@@ -594,9 +599,21 @@ public class ServiceAtualizaCache
         if (!termos.Any())
             return new List<VideoBase>();
 
+        string query = @"SELECT vi.*
+                    FROM videos.dev.videos_com_miniaturas_normal vi
+                    INNER JOIN (
+                        SELECT DISTINCT v.id
+                        FROM videos.dev.video_termos vt
+                        INNER JOIN videos.dev.videos_com_miniaturas_normal v ON v.id = vt.video_id
+                        INNER JOIN videos.dev.video_termos vt2 ON vt2.video_id = v.id
+                        WHERE vt2.termo_id = @TermoId AND v.id != @Id
+                        LIMIT 12
+                    ) vr ON vr.id = vi.id
+                    ORDER BY vi.data_adicionada DESC";
+        
         // 1. Obter vídeos relacionados usando os termos já carregados
         var videosRelacionados = new List<VideoBase>();
-        using (var cmd = new NpgsqlCommand(Queries.VideosRelacionados.ObterVideosRelacionadosBasicos, conexao))
+        using (var cmd = new NpgsqlCommand(query, conexao))
         {
             var termoIds = termos.Select(t => t.Id).ToArray();
             cmd.Parameters.AddWithValue("@TermoId", termoIds.FirstOrDefault());

@@ -14,7 +14,7 @@ var redisOptions = new ConfigurationOptions
     SyncTimeout = 5000,
     AsyncTimeout = 5000,
     ConnectRetry = 3,
-    DefaultDatabase = 0,
+    DefaultDatabase = 1,
     AbortOnConnectFail = false,
     AllowAdmin = true,
     ClientName = "CacheWarming",
@@ -29,13 +29,12 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 
 //robo eporner
+/*
 builder.Services.AddHostedService<RoboInsereVideosSeNaoExistirEporner>();
-
-
 
 builder.Services.AddHostedService<RoboPalavrasProibidas>();
 
-builder.Services.AddSingleton<ServiceAtualizaCache>();
+
 
 // Robo: DeletedVideos
 builder.Services.AddHostedService<RoboDeletaVideos>();
@@ -48,9 +47,12 @@ builder.Services.AddHostedService<RoboInsereVideosSeNaoExistir>();
 
 // Robo: AtualizaBaseInteira - julgo nao ser necessário esse robo por hora
 // builder.Services.AddHostedService<RoboAtualizaBaseInteira>();
+*/
 
 // Robo: AtualizaCache
+builder.Services.AddSingleton<ServiceAtualizaCache>(); //trabalham juntos
 builder.Services.AddHostedService<RoboAtualizaCache>();
+
 
 
 var host = builder.Build();

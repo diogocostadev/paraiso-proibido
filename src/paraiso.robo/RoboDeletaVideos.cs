@@ -29,6 +29,9 @@ public class RoboDeletaVideos : BackgroundService
             try
             {
                 await _semaphore.WaitAsync(stoppingToken);
+
+                await ProcessDeletedEpornVideos(stoppingToken);
+                
                 await ProcessDeletedVideos(stoppingToken);
             }
             catch (Exception ex)
@@ -82,6 +85,61 @@ public class RoboDeletaVideos : BackgroundService
         _logger.LogInformation("Processamento de vídeos deletados concluído");
     }
 
+    private async Task ProcessDeletedEpornVideos(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Iniciando processamento de vídeos deletados");
+        int page = 1;
+        bool hasMorePages = true;
+        bool hasUpdates = false;
+
+        while (hasMorePages && !stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                var videos = await GetDeletedEpornVideos();
+                if (videos?.Any() != true)
+                {
+                    hasMorePages = false;
+                    continue;
+                }
+
+                hasUpdates = await ProcessVideoBatch(videos) || hasUpdates;
+                page++;
+
+                await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken); // Delay entre páginas
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao processar página {Page}", page);
+                hasMorePages = false;
+            }
+        }
+
+        if (hasUpdates)
+        {
+            await RefreshMaterializedView(stoppingToken);
+        }
+
+        _logger.LogInformation("Processamento de vídeos deletados concluído");
+    }
+
+    private async Task<List<DeletedVideo>> GetDeletedEpornVideos()
+    {
+        using var client = _httpClientFactory.CreateClient();
+        var url = $"https://www.eporner.com/api/v2/video/removed/?format=TXT";
+        
+        var response = await client.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var content = await response.Content.ReadAsStringAsync();
+
+        return content.Split("\n")
+            .Select(o => new DeletedVideo() { VideoId = o})
+            .ToList();
+    }
+
+    
     private async Task<List<DeletedVideo>> GetDeletedVideos(int page)
     {
         using var client = _httpClientFactory.CreateClient();

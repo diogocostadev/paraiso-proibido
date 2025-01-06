@@ -13,14 +13,16 @@ public class HomeController : Controller
     private readonly HttpClient _httpClient;
     private readonly ServicoVideosCache _servicoVideos;
 
+    private readonly List<Categoria> _categoriasMenu;
+    
     public HomeController(ILogger<HomeController> logger, IHttpClientFactory httpClientFactory, ServicoVideosCache servicoVideos)
     {
         _logger = logger;
         _servicoVideos = servicoVideos;
         _httpClient = httpClientFactory.CreateClient();
+
+        _categoriasMenu = CarregarCategorias().Result;
     }
-    
-    
 
     [Route("/")]
     public async Task<IActionResult> Index(
@@ -36,20 +38,17 @@ public class HomeController : Controller
     
         try
         {
-            var categoriasTask = CarregarCategorias();
-            var resultadoTask = _servicoVideos.ObterVideosComFiltrosAsync(
+            var resultadoTask = await  _servicoVideos.ObterVideosComFiltrosAsync(
                 b, duracao, periodo, ordem, p, t, catid);
 
-            await Task.WhenAll(categoriasTask, resultadoTask);
-        
             ViewData["categoriaId"] = catid;
             ViewData["termo"] = b;
             ViewData["duracao"] = duracao;
             ViewData["periodo"] = periodo;
             ViewData["ordem"] = ordem;
         
-            ViewData["Categorias"] = categoriasTask.Result;
-            return View(resultadoTask.Result);
+            ViewData["Categorias"] = _categoriasMenu;
+            return View(resultadoTask);
         }
         catch (Exception ex)
         {
@@ -101,9 +100,7 @@ public class HomeController : Controller
         try
         {
             //Layout
-            var categorias = (await _servicoVideos.ObterCategoria()).Where(o => o.Mostrar.HasValue && o.Mostrar.Value).ToList();
-            categorias.Add(new Categoria() { Id = 0, Nome = "Todas" });
-            ViewData["Categorias"] = categorias;
+            ViewData["Categorias"] = _categoriasMenu;
 
             //Container
             ResultadoPaginado<VideoBase> resultado;
@@ -133,9 +130,7 @@ public class HomeController : Controller
     public async Task<IActionResult> V(string id)
     {
         //Layout
-        var categorias = (await _servicoVideos.ObterCategoria()).Where(o => o.Mostrar.HasValue && o.Mostrar.Value).ToList();
-        categorias.Add(new Categoria() { Id = 0, Nome = "Todas" });
-        ViewData["Categorias"] = categorias;
+        ViewData["Categorias"] = _categoriasMenu;
         
         //Container
         var resultado = await _servicoVideos.ObterVideoPorIdAsync(id);
