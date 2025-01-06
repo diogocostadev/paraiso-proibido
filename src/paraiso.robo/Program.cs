@@ -27,15 +27,15 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "VideoCache_";
 });
 
+/*
 builder.Services.AddHostedService<RoboPalavrasProibidas>();
-
-
-
 builder.Services.AddSingleton<ServiceAtualizaCache>();
-
+*/
 
 // Robo: DeletedVideos
 builder.Services.AddHostedService<RoboDeletaVideos>();
+
+/*
 
 // Robo: AtualizaCategorias
 builder.Services.AddHostedService<RoboAtualizaCategorias>();
@@ -49,6 +49,7 @@ builder.Services.AddHostedService<RoboInsereVideosSeNaoExistir>();
 // Robo: AtualizaCache
 builder.Services.AddHostedService<RoboAtualizaCache>();
 
+*/
 
 var host = builder.Build();
 host.Run();
