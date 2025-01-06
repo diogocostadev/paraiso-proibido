@@ -760,9 +760,21 @@ public class ServicoVideosCache
         if (!termos.Any())
             return new List<VideoBase>();
 
+        string query = @"SELECT vi.*
+                    FROM videos.dev.videos_com_miniaturas_normal vi
+                    INNER JOIN (
+                        SELECT DISTINCT v.id
+                        FROM videos.dev.video_termos vt
+                        INNER JOIN videos.dev.videos_com_miniaturas_normal v ON v.id = vt.video_id
+                        INNER JOIN videos.dev.video_termos vt2 ON vt2.video_id = v.id
+                        WHERE vt2.termo_id = @TermoId AND v.id != @Id
+                        LIMIT 12
+                    ) vr ON vr.id = vi.id
+                    ORDER BY vi.data_adicionada DESC";
+        
         // 1. Obter vídeos relacionados usando os termos já carregados
         var videosRelacionados = new List<VideoBase>();
-        using (var cmd = new NpgsqlCommand(Queries.VideosRelacionados.ObterVideosRelacionadosBasicos, conexao))
+        using (var cmd = new NpgsqlCommand(query, conexao))
         {
             var termoIds = termos.Select(t => t.Id).ToArray();
             cmd.Parameters.AddWithValue("@TermoId", termoIds.FirstOrDefault());
@@ -811,32 +823,6 @@ public class ServicoVideosCache
             FROM videos.dev.video_termos vt 
             INNER JOIN videos.dev.termos te ON vt.termo_id = te.id
             WHERE vt.video_id = @Id";
-
-        public static class VideosRelacionados
-        {
-            public const string ObterVideosRelacionadosBasicos = @"
-                WITH videos_relacionados AS (
-                    SELECT 
-                        distinct(v.id) as id
-                    FROM 
-                        videos.dev.video_termos vt
-                    INNER JOIN 
-                        videos.dev.videos_com_miniaturas_normal v ON v.id = vt.video_id
-                    INNER JOIN 
-                        videos.dev.video_termos vt2 ON vt2.video_id = v.id
-                    WHERE 
-                        vt2.termo_id = @TermoId AND v.id != @Id
-                )
-                SELECT 
-                    *
-                FROM 
-                    dev.videos_com_miniaturas_normal vi
-                INNER JOIN 
-                        videos_relacionados vr on vr.id = vi.id
-                ORDER BY 
-                    vi.data_adicionada DESC
-                LIMIT 12";
-        }
 
         public static class BuscaVideos
         {
