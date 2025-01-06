@@ -27,6 +27,8 @@ public class Videos
 public class Video
 {
     public string Duration { get; set; }
+    public int ? DurationSeconds { get; set; }
+    public int SiteId { get; set; }
     public int Views { get; set; }
     
     [JsonPropertyName("video_id")]
@@ -45,7 +47,7 @@ public class Video
     public List<Thumbs> Thumbs { get; set; }
     public List<Tags> Tags { get; set; }
 
-    public Video(string duration, int views, string videoId, string rating, int ratings, string title, string url, string embedUrl, string defaultThumb, string thumb, string publishDate, List<Thumbs> thumbs, List<Tags> tags)
+    public Video(string duration, int views, string videoId, string rating, int ratings, string title, string url, string embedUrl, string defaultThumb, string thumb, string publishDate, List<Thumbs> thumbs, List<Tags> tags, int durationSeconds, int _SiteId = 1)
     {
         Duration = duration;
         Views = views;
@@ -60,6 +62,8 @@ public class Video
         PublishDate = publishDate;
         Thumbs = thumbs;
         Tags = tags;
+        DurationSeconds = durationSeconds;
+        SiteId = _SiteId;
     }
 }
 

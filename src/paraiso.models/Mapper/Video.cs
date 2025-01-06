@@ -6,6 +6,9 @@ public static class Video
     {
         DateTime.TryParse(video.PublishDate, out var dataCad);
         decimal.TryParse(video.Rating, out var avalia);
+
+        
+        video.DurationSeconds ??= ConvertDurationToSeconds(video.Duration);
         
         return new paraiso.models.Video( 
            video.VideoId,
@@ -14,10 +17,10 @@ public static class Video
            avalia, // Converte o rating para decimal, valor padrão 0 se falhar
            video.Url,
            dataCad, // Converte a data de publicação, valor padrão se falhar
-           ConvertDurationToSeconds(video.Duration), // Converte a duração para segundos
+           video.DurationSeconds.Value, 
            video.Duration, // Mantém a duração no formato original
            video.EmbedUrl,
-           1, // Defina aqui sua lógica de SiteId, ou mantenha como valor padrão
+           video.SiteId, // Defina aqui sua lógica de SiteId, ou mantenha como valor padrão
            video.Thumbs.FirstOrDefault()?.Size ?? "medium", // Usa a primeira miniatura como padrão
            video.Thumbs.FirstOrDefault()?.Width ?? 0,
            video.Thumbs.FirstOrDefault()?.Height ?? 0,
