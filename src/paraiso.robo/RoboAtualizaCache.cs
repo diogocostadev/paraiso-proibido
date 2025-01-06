@@ -13,7 +13,7 @@ public class RoboAtualizaCache : BackgroundService
     private readonly SemaphoreSlim _semaphore;
 
     // Configurações otimizadas
-    private readonly int _intervaloMinutos;
+    private readonly int _intervaloHoras;
     private readonly int _maxPaginas;
     private readonly int _batchSize;
     private readonly int _maxConcurrentOperations;
@@ -32,8 +32,8 @@ public class RoboAtualizaCache : BackgroundService
         _cacheService = cacheService;
         
         // Carrega configurações
-        _intervaloMinutos = _configuration.GetValue<int>("CacheWarming:IntervalInMinutes", 30);
-        _maxPaginas = _configuration.GetValue<int>("CacheWarming:MaxPages", 1000);
+        _intervaloHoras = 3;
+        _maxPaginas = _configuration.GetValue<int>("CacheWarming:MaxPages", 10000);
         _batchSize = _configuration.GetValue<int>("CacheWarming:BatchSize", 5);
         _maxConcurrentOperations = _configuration.GetValue<int>("CacheWarming:MaxConcurrentOperations", 3);
         _retryAttempts = _configuration.GetValue<int>("CacheWarming:RetryAttempts", 3);
@@ -48,7 +48,7 @@ public class RoboAtualizaCache : BackgroundService
         }
     }
     
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -68,7 +68,7 @@ public class RoboAtualizaCache : BackgroundService
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(_intervaloMinutos), stoppingToken);
+            await Task.Delay(TimeSpan.FromHours(_intervaloHoras), stoppingToken);
         }
     }
     
@@ -101,7 +101,7 @@ public class RoboAtualizaCache : BackgroundService
         try
         {
             await _semaphore.WaitAsync(stoppingToken);
-            await ProcessWithRetry(() => _cacheService.ObterVideosAsync(page, 120), stoppingToken);
+            await ProcessWithRetry(() => _cacheService.ObterVideosAsync(b:"", duracao: null, periodo: null, ordem: null, page, 36), stoppingToken);
         }
         finally
         {

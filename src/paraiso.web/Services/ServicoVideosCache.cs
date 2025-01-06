@@ -74,16 +74,19 @@ public class ServicoVideosCache
 
         try
         {
-            if (_memoryCache?.TryGetValue<ResultadoPaginado<VideoBase>>(chaveCache, out var resultadoMemoria) == true)
+            var dadosCache = await _cache.GetAsync(chaveCache);
+            if (dadosCache != null)
             {
-                return resultadoMemoria;
+                var dadosDescomprimidos = _usarCompressao ? DescomprimirDados(dadosCache) : dadosCache;
+            
+                return JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(Encoding.UTF8.GetString(dadosDescomprimidos));
             }
-
+            
             return await _circuitBreaker.ExecuteAsync(async () =>
             {
                 using var conexao = new NpgsqlConnection(_stringConexao);
                 await conexao.OpenAsync();
-
+                
                 var consultaBase = @"
                 WITH filtered_videos AS (
                     SELECT v.* 
