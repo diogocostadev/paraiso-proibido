@@ -86,12 +86,37 @@ public class ServicoVideosCache
             {
                 using var conexao = new NpgsqlConnection(_stringConexao);
                 await conexao.OpenAsync();
-                
-                var consultaBase = @"
+
+                string buscaPalavrasQuery = string.Empty;
+
+                if (!string.IsNullOrEmpty(b))
+                {
+                    buscaPalavrasQuery += "AND (";
+                    int i = 0;
+                    foreach (var palavra in b.Split(" "))
+                    {
+                        if (i > 0)
+                        {
+                            buscaPalavrasQuery += " AND ";
+                        }
+                        
+                        buscaPalavrasQuery += $@"LOWER(v.titulo) LIKE '%{palavra.ToLower()}%'";
+                        i++;
+                    }
+                    buscaPalavrasQuery += ")";
+                }
+               
+                var consultaBase = @$"
                 WITH filtered_videos AS (
                     SELECT v.* 
                     FROM dev.videos_com_miniaturas_normal v
                     WHERE 1=1
+
+                    -- Filtro de busca
+                        AND (
+                                (@HasSearch = false OR v.titulo ILIKE ALL(SELECT '%' || unnest(@SearchTerms::text[]) || '%'))
+                            )
+
                     -- Filtro de duração
                     AND CASE 
                         WHEN @DuracaoFiltro = '0-10' THEN duracao_segundos <= 600
@@ -107,11 +132,7 @@ public class ServicoVideosCache
                         WHEN @PeriodoFiltro = 'month' THEN data_adicionada >= (CURRENT_DATE - INTERVAL '30 days')
                         ELSE TRUE
                     END
-                    -- Filtro de busca
-                    AND CASE 
-                        WHEN @Busca <> '' THEN LOWER(titulo) LIKE '%' || LOWER(@Busca) || '%'
-                        ELSE TRUE
-                    END
+
                     -- Filtro de categoria
                     AND CASE 
                         WHEN @CategoriaId > 0 THEN 
@@ -130,6 +151,52 @@ public class ServicoVideosCache
                     SELECT *, 3 as ordem_tipo FROM filtered_videos
                     WHERE @Ordem IS NULL OR @Ordem NOT IN ('newest', 'oldest', 'longest', 'shortest')
                 )";
+
+                var _consultaBase = @$"
+WITH search_terms AS (
+   SELECT unnest(@SearchTerms::text[]) as term
+),
+filtered_videos AS (
+   SELECT DISTINCT v.* 
+   FROM dev.videos_com_miniaturas_normal v
+   LEFT JOIN dev.video_termos vt ON v.id = vt.video_id 
+   LEFT JOIN dev.termos t ON vt.termo_id = t.id
+   WHERE 1=1
+   AND (
+       @HasSearch = false 
+       OR v.titulo ILIKE ALL(SELECT '%' || term || '%' FROM search_terms)
+       OR t.termo ILIKE ANY(SELECT '%' || term || '%' FROM search_terms)
+   )
+   AND CASE 
+       WHEN @DuracaoFiltro = '0-10' THEN duracao_segundos <= 600
+       WHEN @DuracaoFiltro = '10-20' THEN duracao_segundos > 600 AND duracao_segundos <= 1200
+       WHEN @DuracaoFiltro = '20-30' THEN duracao_segundos > 1200 AND duracao_segundos <= 1800
+       WHEN @DuracaoFiltro = '30+' THEN duracao_segundos > 1800
+       ELSE TRUE
+   END
+   AND CASE 
+       WHEN @PeriodoFiltro = 'today' THEN data_adicionada::date = CURRENT_DATE
+       WHEN @PeriodoFiltro = 'week' THEN data_adicionada >= (CURRENT_DATE - INTERVAL '7 days')
+       WHEN @PeriodoFiltro = 'month' THEN data_adicionada >= (CURRENT_DATE - INTERVAL '30 days')
+       ELSE TRUE
+   END
+   AND CASE 
+       WHEN @CategoriaId > 0 THEN 
+           EXISTS (SELECT 1 FROM dev.video_categorias vc 
+                  WHERE vc.video_id = v.id AND vc.categoria_id = @CategoriaId)
+       ELSE TRUE
+   END
+),
+ordered_videos AS (
+   SELECT *, 1 as ordem_tipo FROM filtered_videos
+   WHERE @Ordem IN ('newest', 'oldest')
+   UNION ALL
+   SELECT *, 2 as ordem_tipo FROM filtered_videos
+   WHERE @Ordem IN ('longest', 'shortest')
+   UNION ALL
+   SELECT *, 3 as ordem_tipo FROM filtered_videos
+   WHERE @Ordem IS NULL OR @Ordem NOT IN ('newest', 'oldest', 'longest', 'shortest')
+)";
 
                 // Consulta de contagem
                 var consultaTotal = "SELECT COUNT(*) FROM filtered_videos";
@@ -185,7 +252,9 @@ public class ServicoVideosCache
     private void ConfigurarParametros(NpgsqlCommand cmd, string busca, string duracao, string periodo,
         string ordem, int categoriaId, int pagina, int tamanhoPagina)
     {
-        cmd.Parameters.AddWithValue("@Busca", busca ?? "");
+        cmd.Parameters.AddWithValue("HasSearch", !string.IsNullOrEmpty(busca));
+        cmd.Parameters.AddWithValue("SearchTerms", string.IsNullOrEmpty(busca) ? new string[] {} : busca.Split(' ').Select(s => s.ToLower()).ToArray());
+
         cmd.Parameters.AddWithValue("@DuracaoFiltro", duracao ?? "");
         cmd.Parameters.AddWithValue("@PeriodoFiltro", periodo ?? "");
         cmd.Parameters.AddWithValue("@Ordem", ordem ?? "newest");
@@ -439,8 +508,6 @@ public class ServicoVideosCache
         };
     }
 
-
-
     //Busca por termo
     public async Task<ResultadoPaginado<VideoBase>> ObterVideosPorTermoAsync(string termo, int pagina = 1, int tamanhoPagina = 36)
     {
@@ -666,12 +733,8 @@ public class ServicoVideosCache
             var dadosCache = await _cache.GetAsync(chaveCache);
             if (dadosCache != null)
             {
-                var dadosDescomprimidos = _usarCompressao
-                    ? DescomprimirDados(dadosCache)
-                    : dadosCache;
-
-                return JsonSerializer.Deserialize<VideoBase>(
-                    Encoding.UTF8.GetString(dadosDescomprimidos));
+                var dadosDescomprimidos = _usarCompressao ? DescomprimirDados(dadosCache) : dadosCache;
+                return JsonSerializer.Deserialize<VideoBase>(Encoding.UTF8.GetString(dadosDescomprimidos));
             }
 
             return await _circuitBreaker.ExecuteAsync(async () =>
@@ -695,7 +758,6 @@ public class ServicoVideosCache
                     {
                         await conexao.OpenAsync(cancellationToken);
                         video.VideosRelacionados = await ObterVideosRelacionadosAsync(conexao, id, video.Termos, cancellationToken); 
-                     
                     }
                 }
                 catch (Exception e)
