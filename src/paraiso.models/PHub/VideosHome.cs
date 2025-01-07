@@ -6,22 +6,11 @@ public class VideosHome
 {
     public List<Videos> Videos { get; set; }
     public int Count { get; set; }
-
-    public VideosHome(List<Videos> videos, int count)
-    {
-        Videos = videos;
-        Count = count;
-    }
 }
 
 public class Videos
 {
     public Video Video { get; set; }
-
-    public Videos(Video video)
-    {
-        Video = video;
-    }
 }
 
 public class Video
@@ -46,25 +35,7 @@ public class Video
     public string PublishDate { get; set; }
     public List<Thumbs> Thumbs { get; set; }
     public List<Tags> Tags { get; set; }
-
-    public Video(string duration, int views, string videoId, string rating, int ratings, string title, string url, string embedUrl, string defaultThumb, string thumb, string publishDate, List<Thumbs> thumbs, List<Tags> tags, int durationSeconds, int _SiteId = 1)
-    {
-        Duration = duration;
-        Views = views;
-        VideoId = videoId;
-        Rating = rating;
-        Ratings = ratings;
-        Title = title;
-        Url = url;
-        EmbedUrl = embedUrl;
-        DefaultThumb = defaultThumb;
-        Thumb = thumb;
-        PublishDate = publishDate;
-        Thumbs = thumbs;
-        Tags = tags;
-        DurationSeconds = durationSeconds;
-        SiteId = _SiteId;
-    }
+    
 }
 
 public class Thumbs
@@ -93,3 +64,35 @@ public class Tags
         TagName = tagName;
     }
 }
+
+
+// public class Video
+// {
+//     public string duration { get; set; }
+//     public int views { get; set; }
+//     public string video_id { get; set; }
+//     public string rating { get; set; }
+//     public int ratings { get; set; }
+//     public string title { get; set; }
+//     public string url { get; set; }
+//     public string embed_url { get; set; }
+//     public string default_thumb { get; set; }
+//     public string thumb { get; set; }
+//     public string publish_date { get; set; }
+//     public Thumbs[] thumbs { get; set; }
+//     public Tags[] tags { get; set; }
+// }
+//
+// public class Thumbs
+// {
+//     public string size { get; set; }
+//     public int width { get; set; }
+//     public int height { get; set; }
+//     public string src { get; set; }
+// }
+//
+// public class Tags
+// {
+//     public string tag_name { get; set; }
+// }
+//

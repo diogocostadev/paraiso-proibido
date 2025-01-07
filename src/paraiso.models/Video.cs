@@ -1,4 +1,4 @@
-﻿namespace paraiso.models;
+namespace paraiso.models;
 
 public class Video
 {
@@ -18,9 +18,11 @@ public class Video
     public string DefaultThumbSrc { get; set; }
     public List<Miniatura> Miniaturas { get; set; }
     public List<Termo> Termos { get; set; }
+    
+    public string Tags { get; set; }
 
     public Video(string id, string titulo, int visualizacoes, decimal avaliacao, string url, DateTime dataAdicionada, int duracaoSegundos, string duracaoMinutos, string embed, int siteId, string defaultThumbSize, int defaultThumbWidth, int defaultThumbHeight, string defaultThumbSrc, 
-        List<Miniatura> miniaturas, List<Termo> termos)
+        List<Miniatura> miniaturas, string termos)
     {
         Id = id;
         Titulo = titulo;
@@ -37,7 +39,7 @@ public class Video
         DefaultThumbHeight = defaultThumbHeight;
         DefaultThumbSrc = defaultThumbSrc;
         Miniaturas = miniaturas;
-        Termos = termos;
+        Tags = termos;
     }
 }
 

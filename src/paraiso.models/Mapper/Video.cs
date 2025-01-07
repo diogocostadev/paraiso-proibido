@@ -27,7 +27,7 @@ public static class Video
            
            video.DefaultThumb,
            video.Thumbs.MaptoThums(video), // Mapeia o thumbnail padrão
-           video.Tags.MaptoTermos() // Mapeia os termos
+           string.Join(",", video.Tags.Select(o => o.TagName)) // Mapeia os termos
         );
         
       

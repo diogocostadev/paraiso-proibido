@@ -78,7 +78,6 @@ public class ServicoVideosCache
             if (dadosCache != null)
             {
                 var dadosDescomprimidos = _usarCompressao ? DescomprimirDados(dadosCache) : dadosCache;
-            
                 return JsonSerializer.Deserialize<ResultadoPaginado<VideoBase>>(Encoding.UTF8.GetString(dadosDescomprimidos));
             }
             
@@ -106,6 +105,8 @@ public class ServicoVideosCache
                     buscaPalavrasQuery += ")";
                 }
                
+
+                
                 var consultaBase = @$"
                 WITH filtered_videos AS (
                     SELECT v.* 
@@ -113,9 +114,11 @@ public class ServicoVideosCache
                     WHERE 1=1
 
                     -- Filtro de busca
-                        AND (
-                                (@HasSearch = false OR v.titulo ILIKE ALL(SELECT '%' || unnest(@SearchTerms::text[]) || '%'))
-                            )
+
+AND (
+    (@HasSearch = false OR v.titulo ILIKE ALL(SELECT '%' || unnest(@SearchTerms::text[]) || '%'))
+    OR to_tsvector('portuguese', v.tags) @@ to_tsquery('portuguese', array_to_string(@SearchTerms, ' | '))
+)
 
                     -- Filtro de duração
                     AND CASE 
@@ -151,52 +154,6 @@ public class ServicoVideosCache
                     SELECT *, 3 as ordem_tipo FROM filtered_videos
                     WHERE @Ordem IS NULL OR @Ordem NOT IN ('newest', 'oldest', 'longest', 'shortest')
                 )";
-
-                var _consultaBase = @$"
-WITH search_terms AS (
-   SELECT unnest(@SearchTerms::text[]) as term
-),
-filtered_videos AS (
-   SELECT DISTINCT v.* 
-   FROM dev.videos_com_miniaturas_normal v
-   LEFT JOIN dev.video_termos vt ON v.id = vt.video_id 
-   LEFT JOIN dev.termos t ON vt.termo_id = t.id
-   WHERE 1=1
-   AND (
-       @HasSearch = false 
-       OR v.titulo ILIKE ALL(SELECT '%' || term || '%' FROM search_terms)
-       OR t.termo ILIKE ANY(SELECT '%' || term || '%' FROM search_terms)
-   )
-   AND CASE 
-       WHEN @DuracaoFiltro = '0-10' THEN duracao_segundos <= 600
-       WHEN @DuracaoFiltro = '10-20' THEN duracao_segundos > 600 AND duracao_segundos <= 1200
-       WHEN @DuracaoFiltro = '20-30' THEN duracao_segundos > 1200 AND duracao_segundos <= 1800
-       WHEN @DuracaoFiltro = '30+' THEN duracao_segundos > 1800
-       ELSE TRUE
-   END
-   AND CASE 
-       WHEN @PeriodoFiltro = 'today' THEN data_adicionada::date = CURRENT_DATE
-       WHEN @PeriodoFiltro = 'week' THEN data_adicionada >= (CURRENT_DATE - INTERVAL '7 days')
-       WHEN @PeriodoFiltro = 'month' THEN data_adicionada >= (CURRENT_DATE - INTERVAL '30 days')
-       ELSE TRUE
-   END
-   AND CASE 
-       WHEN @CategoriaId > 0 THEN 
-           EXISTS (SELECT 1 FROM dev.video_categorias vc 
-                  WHERE vc.video_id = v.id AND vc.categoria_id = @CategoriaId)
-       ELSE TRUE
-   END
-),
-ordered_videos AS (
-   SELECT *, 1 as ordem_tipo FROM filtered_videos
-   WHERE @Ordem IN ('newest', 'oldest')
-   UNION ALL
-   SELECT *, 2 as ordem_tipo FROM filtered_videos
-   WHERE @Ordem IN ('longest', 'shortest')
-   UNION ALL
-   SELECT *, 3 as ordem_tipo FROM filtered_videos
-   WHERE @Ordem IS NULL OR @Ordem NOT IN ('newest', 'oldest', 'longest', 'shortest')
-)";
 
                 // Consulta de contagem
                 var consultaTotal = "SELECT COUNT(*) FROM filtered_videos";
@@ -238,7 +195,7 @@ ordered_videos AS (
                     TotalPaginas = (int)Math.Ceiling(total / (double)tamanhoPagina)
                 };
 
-                await ArmazenarEmCache(chaveCache, resultado);
+                await ArmazenarEmCache(chaveCache, resultado, 24);
                 return resultado;
             });
         }
@@ -334,7 +291,7 @@ ordered_videos AS (
                     });
                 }
 
-                await ArmazenarEmCache(chaveCache, categorias);
+                await ArmazenarEmCache(chaveCache, categorias, 24);
                 return categorias;
             });
         }
@@ -346,24 +303,27 @@ ordered_videos AS (
     }
 
     #region "--=[Métodos para deixar dados em cache]=--"
-    
-    private async Task ArmazenarEmCache<T>(string chave, T dados)
+
+    private async Task ArmazenarEmCache<T>(string chave, T dados, int ? tempoHoras = null)
     {
         var jsonDados = JsonSerializer.Serialize(dados);
         byte[] dadosComprimidos = _usarCompressao
             ? ComprimirDados(Encoding.UTF8.GetBytes(jsonDados))
             : Encoding.UTF8.GetBytes(jsonDados);
 
-        var opcoesCache = new DistributedCacheEntryOptions
+        if (tempoHoras.HasValue)
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_tempoExpiracaoMinutos),
-            SlidingExpiration = TimeSpan.FromMinutes(_tempoSlidingMinutos)
-        };
-
-        await _cache.SetAsync(chave, dadosComprimidos, opcoesCache);
-
-        // Armazena em memória
-        _memoryCache?.Set(chave, dados, TimeSpan.FromSeconds(60));
+            var opcoesCache = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(tempoHoras.Value)
+            };
+            
+            await _cache.SetAsync(chave, dadosComprimidos, opcoesCache);
+        }
+        else
+        {
+            await _cache.SetAsync(chave, dadosComprimidos);
+        }
     }
 
     private byte[] ComprimirDados(byte[] dados)
@@ -532,7 +492,7 @@ ordered_videos AS (
             {
                 //var resultado = await ObterVideosPorTermoPaginadosDoBanco(termo, pagina, tamanhoPagina);
                 var resultado = await BuscarVideosAsync(termo, pagina, tamanhoPagina);
-                await ArmazenarEmCache(chaveCache, resultado);
+                await ArmazenarEmCache(chaveCache, resultado, 1);
                 return resultado;
             });
         }
@@ -634,7 +594,7 @@ ordered_videos AS (
             return await _circuitBreaker.ExecuteAsync(async () =>
             {
                 var resultado = await ObterVideosPorCategoriaPaginadosDoBanco(categoriaId, pagina, tamanhoPagina);
-                await ArmazenarEmCache(chaveCache, resultado);
+                await ArmazenarEmCache(chaveCache, resultado, 2);
                 return resultado;
             });
         }

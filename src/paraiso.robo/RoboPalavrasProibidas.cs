@@ -40,8 +40,7 @@ public class RoboPalavrasProibidas : BackgroundService
                     CommandTimeout = 3600 // 1 hora
                 };
 
-                _logger.LogInformation("Iniciando atualização da materialized view (tentativa {Attempt}/{MaxRetries})",
-                    currentTry + 1, maxRetries);
+                _logger.LogInformation("Iniciando atualização da materialized view (tentativa {Attempt}/{MaxRetries})", currentTry + 1, maxRetries);
 
                 await cmd.ExecuteNonQueryAsync(stoppingToken);
                 _logger.LogInformation("Materialized view atualizada com sucesso");
@@ -202,20 +201,22 @@ public class RoboPalavrasProibidas : BackgroundService
         cmdSelect.Parameters.AddWithValue(char.ToUpper(palavra.Palavra[0]) + palavra.Palavra.Substring(1).ToLower());
 
         var videosParaInativar = new List<(int Id, string Titulo)>();
+        var videosParaEpornInativar = new List<(string Id, string Titulo)>();
 
         await using (var reader = await cmdSelect.ExecuteReaderAsync(cancellationToken))
         {
             while (await reader.ReadAsync(cancellationToken))
             {
                 var idString = reader.GetString(0);
+                var titulo = reader.GetString(1);
+
                 if (int.TryParse(idString, out int id))
                 {
-                    var titulo = reader.GetString(1);
                     videosParaInativar.Add((id, titulo));
                 }
                 else
                 {
-                    _logger.LogWarning("ID inválido encontrado: {Id}", idString);
+                    videosParaEpornInativar.Add((idString, titulo));
                 }
             }
         }
@@ -254,6 +255,59 @@ public class RoboPalavrasProibidas : BackgroundService
                         (palavra_id, video_id, texto_anterior, texto_atual, tipo_alteracao) 
                     VALUES 
                         (CAST($1 AS INTEGER), CAST($2 AS INTEGER), $3, $4, 'video')";
+
+                    await using var cmdOcorrencia = new NpgsqlCommand(sqlOcorrencia, connection, transaction);
+                    cmdOcorrencia.Parameters.AddWithValue(palavra.Id.ToString());
+                    cmdOcorrencia.Parameters.AddWithValue(video.Id.ToString());
+                    cmdOcorrencia.Parameters.AddWithValue(video.Titulo);
+                    cmdOcorrencia.Parameters.AddWithValue(video.Titulo);
+                    await cmdOcorrencia.ExecuteNonQueryAsync(cancellationToken);
+
+                    substituicoes++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Erro ao processar vídeo {VideoId} ({Titulo})",
+                        video.Id, video.Titulo);
+                    throw;
+                }
+            }
+        }
+        if (videosParaEpornInativar.Any())
+        {
+            foreach (var video in videosParaEpornInativar)
+            {
+                try
+                {
+                    // Registra na tabela de vídeos inativos
+                    const string sqlInativo = @"
+                    INSERT INTO dev.videos_inativos (video_id_str, motivo, data_inativacao) 
+                    VALUES ($1, $2, CURRENT_TIMESTAMP)
+                    ON CONFLICT (video_id_str) DO NOTHING";
+
+                    await using var cmdInativo = new NpgsqlCommand(sqlInativo, connection, transaction);
+                    cmdInativo.Parameters.AddWithValue(video.Id.ToString());
+                    cmdInativo.Parameters.AddWithValue($"Palavra proibida encontrada: {palavra.Palavra}");
+                    await cmdInativo.ExecuteNonQueryAsync(cancellationToken);
+
+                    // Inativa o vídeo
+                    const string sqlUpdate = @"
+                    UPDATE dev.videos 
+                        SET ativo = false 
+                    WHERE 
+                        id = $1 AND ativo = true";
+
+                    await using var cmdUpdate = new NpgsqlCommand(sqlUpdate, connection, transaction);
+                    cmdUpdate.Parameters.AddWithValue(video.Id);
+                    await cmdUpdate.ExecuteNonQueryAsync(cancellationToken);
+
+                    // Registra a ocorrência
+                    const string sqlOcorrencia = @"
+                    INSERT INTO dev.palavras_ocorrencias 
+                        (palavra_id, video_id, texto_anterior, texto_atual, tipo_alteracao) 
+                    VALUES 
+                        (CAST($1 AS INTEGER), $2, $3, $4, 'video')";
 
                     await using var cmdOcorrencia = new NpgsqlCommand(sqlOcorrencia, connection, transaction);
                     cmdOcorrencia.Parameters.AddWithValue(palavra.Id.ToString());

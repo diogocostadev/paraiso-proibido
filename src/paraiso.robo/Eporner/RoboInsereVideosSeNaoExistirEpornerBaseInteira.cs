@@ -10,15 +10,15 @@ using paraiso.robo.ModelWeb;
 namespace paraiso.robo.Eporner;
 
 
-public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
+public class RoboInsereVideosSeNaoExistirEpornerBaseInteira : BackgroundService
 {
-    private readonly ILogger<RoboInsereVideosSeNaoExistirEporner> _logger;
+    private readonly ILogger<RoboInsereVideosSeNaoExistirEpornerBaseInteira> _logger;
     private readonly HttpClient _httpClient;
     private readonly string _connectionString;
     private const string API_URL = "https://www.eporner.com/api/v2/video/search/?per_page=1000&format=json&page=";
 
     private bool _atualizaView = false;
-    public RoboInsereVideosSeNaoExistirEporner(ILogger<RoboInsereVideosSeNaoExistirEporner> logger, IConfiguration _configuration)
+    public RoboInsereVideosSeNaoExistirEpornerBaseInteira(ILogger<RoboInsereVideosSeNaoExistirEpornerBaseInteira> logger, IConfiguration _configuration)
     {
         Console.WriteLine("-=[Atualizador de vídeos iniciado]=-");
         _logger = logger;
@@ -194,16 +194,20 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
                     if (!await VideoExists(connection, video.Id))
                     {
                         await InsertVideo(connection, video);
-                        await InsertThumbnails(connection, video.Id, video.Miniaturas);
-                        await InsertTerms(connection, video.Id, video.Termos);
                         videosNovos++;
-
-                        _atualizaView = true;
+                    }
+                    else
+                    {
+                        await UpdateVideo(connection, video);
+                        videosNovos++;
                     }
 
+                    await UpdateThumbnails(connection, video.Id, video.Miniaturas);
                     await transaction.CommitAsync();
+                    
+                    _atualizaView = true;
                     videosProcessados++;
-                    Console.WriteLine($"Página: {currentPage} - Video: {videosProcessados}");
+                    _logger.LogInformation($"EP ---> Página: {currentPage} - Video: {videosProcessados}");
                 }
                 catch (Exception ex)
                 {
@@ -240,6 +244,30 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         return true; // Continua sempre buscando novas páginas
     }
 
+    private async Task UpdateVideo(NpgsqlConnection connection, paraiso.models.Video video)
+    {
+        const string sql = @"
+            UPDATE dev.videos 
+            SET titulo = @Titulo, 
+                visualizacoes = @Visualizacoes, 
+                avaliacao = @Avaliacao, 
+                url = @Url, 
+                data_adicionada = @DataAdicionada, 
+                duracao_segundos = @DuracaoSegundos, 
+                duracao_minutos = @DuracaoMinutos, 
+                embed = @Embed, 
+                site_id = @SiteId, 
+                default_thumb_size = @DefaultThumbSize, 
+                default_thumb_width = @DefaultThumbWidth, 
+                default_thumb_height = @DefaultThumbHeight, 
+                default_thumb_src = @DefaultThumbSrc, 
+                tags = @Tags
+            WHERE id = @Id";
+            
+        await connection.ExecuteAsync(sql, video);
+    }
+
+    
     private async Task<bool> VideoExists(NpgsqlConnection connection, string videoId)
     {
         const string sql = "SELECT COUNT(1) FROM dev.videos WHERE id = @Id";
@@ -253,11 +281,11 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
             INSERT INTO dev.videos 
             (id, titulo, visualizacoes, avaliacao, url, data_adicionada, 
              duracao_segundos, duracao_minutos, embed, site_id, 
-             default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src)
+             default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src, tags)
             VALUES 
             (@Id, @Titulo, @Visualizacoes, @Avaliacao, @Url, @DataAdicionada, 
              @DuracaoSegundos, @DuracaoMinutos, @Embed, @SiteId, 
-             @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc)";
+             @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc, @Tags)";
             
         await connection.ExecuteAsync(sql, video);
     }
@@ -271,6 +299,20 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         await connection.ExecuteAsync(insertSql, thumbnails);
     }
 
+    private async Task UpdateThumbnails(NpgsqlConnection connection, string videoId, List<Miniatura> thumbnails)
+    {
+        // Remove miniaturas existentes
+        const string deleteSql = "DELETE FROM dev.miniaturas WHERE video_id = @VideoId";
+        await connection.ExecuteAsync(deleteSql, new { VideoId = videoId });
+
+        // Insere novas miniaturas
+        const string insertSql = @"
+            INSERT INTO dev.miniaturas (video_id, tamanho, largura, altura, src, padrao)
+            VALUES (@VideoId, @Tamanho, @Largura, @Altura, @Src, @Padrao)";
+            
+        await connection.ExecuteAsync(insertSql, thumbnails);
+    }
+    
     private async Task InsertTerms(NpgsqlConnection connection, string videoId, List<Termo> terms)
     {
         if (terms == null || !terms.Any())

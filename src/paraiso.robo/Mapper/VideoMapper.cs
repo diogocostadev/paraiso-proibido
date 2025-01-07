@@ -15,7 +15,7 @@ public static class VideoMapper
 
         var videos = source.videos.Select(MapToVideos).ToList();
 
-        return new VideosHome(videos, source.total_count);
+        return new VideosHome() { Videos = videos, Count = source.total_count };
     }
 
     private static Videos MapToVideos(ModelWeb.Videos source)
@@ -23,25 +23,26 @@ public static class VideoMapper
         if (source == null)
             throw new ArgumentNullException(nameof(source));
         
-        var video = new Video(
-            duration: $"{source.length_min}",
-            views: source.views,
-            videoId: source.id,
-            rating: source.rate,
-            ratings: 0, // Assumindo que não há equivalente direto
-            title: source.title,
-            url: source.url,
-            embedUrl: source.embed,
-            defaultThumb: source.default_thumb?.src ?? string.Empty,
-            thumb: source.thumbs?.FirstOrDefault()?.src ?? string.Empty,
-            publishDate: source.added,
-            thumbs: source.thumbs?.Select(MapToThumbs).ToList() ?? new List<Thumbs>(),
-            tags: source.keywords.Split(',').Select(x => new Tags(x)).ToList(),
-            durationSeconds: source.length_sec, 
-            2 //eporner
-        );
+        var video = new Video() {
+            Duration = $"{source.length_min}",
+            Views = source.views,
+            VideoId = source.id,
+            Rating = source.rate,
+            Ratings = 0, // Assumindo que não há equivalente direto
+            Title =  source.title,
+            Url = source.url,
+            EmbedUrl = source.embed,
+            DefaultThumb = source.default_thumb?.src ?? string.Empty,
+            Thumb = source.thumbs?.FirstOrDefault()?.src ?? string.Empty,
+            PublishDate = source.added,
+            Thumbs = source.thumbs?.Select(MapToThumbs).ToList() ?? new List<Thumbs>(),
+            Tags = source.keywords.Split(',').Select(x => new Tags(x)).ToList(),
+            DurationSeconds = source.length_sec, 
+            SiteId = 2 //eporner
+            }
+        ;
 
-        return new Videos(video);
+        return new Videos { Video = video };
     }
 
     private static Thumbs MapToThumbs(ModelWeb.Thumbs source)

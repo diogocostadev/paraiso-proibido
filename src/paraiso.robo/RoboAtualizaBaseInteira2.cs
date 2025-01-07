@@ -4,28 +4,24 @@ using Npgsql;
 using paraiso.models;
 using paraiso.models.Mapper;
 using paraiso.models.PHub;
-using paraiso.robo.Mapper;
-using paraiso.robo.ModelWeb;
 
-namespace paraiso.robo.Eporner;
+namespace paraiso.robo;
 
-
-public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
+public class RoboAtualizaBaseInteira2 : BackgroundService
 {
-    private readonly ILogger<RoboInsereVideosSeNaoExistirEporner> _logger;
+    private readonly ILogger<RoboAtualizaBaseInteira2> _logger;
+
     private readonly HttpClient _httpClient;
     private readonly string _connectionString;
-    private const string API_URL = "https://www.eporner.com/api/v2/video/search/?per_page=1000&format=json&page=";
+    private const string API_URL = "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&thumbsize=all&ordering=newest&page=";
 
-    private bool _atualizaView = false;
-    public RoboInsereVideosSeNaoExistirEporner(ILogger<RoboInsereVideosSeNaoExistirEporner> logger, IConfiguration _configuration)
+    public RoboAtualizaBaseInteira2(ILogger<RoboAtualizaBaseInteira2> logger, IConfiguration _configuration)
     {
         Console.WriteLine("-=[Atualizador de vídeos iniciado]=-");
         _logger = logger;
         _httpClient = new HttpClient();
-        _connectionString = _configuration.GetConnectionString("conexao-atualiza-se-nao-existir-eporner");
+        _connectionString = _configuration.GetConnectionString("conexao-atualiza-base-inteira");
     }
-    
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -33,87 +29,42 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         {
             try
             {
-                _logger.LogInformation("Iniciando busca por novos vídeos: {time}", DateTimeOffset.Now);
-                await SyncVideos();
-                
-                if (_atualizaView)
+                _logger.LogInformation("Iniciando sincronização de vídeos: {time}", DateTimeOffset.Now);
+
+                var lastSyncDate =  new DateTime(1980, 1, 1); //await GetLastSyncDate();
+                if (lastSyncDate == DateTime.MinValue)
                 {
-                    await RefreshMaterializedView(stoppingToken);
-                    _atualizaView = false;
+                    _logger.LogInformation("Nenhum vídeo encontrado no banco. Iniciando primeira sincronização.");
                 }
+                else
+                {
+                    _logger.LogInformation("Última data de sincronização: {date}", lastSyncDate);
+                }
+                await SyncVideos(lastSyncDate);
                 
-                // Aguarda 1 hora antes da próxima sincronização
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                // Aguarda 24 horas antes da próxima sincronização
+                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro durante a busca por novos vídeos");
+                _logger.LogError(ex, "Erro durante a sincronização de vídeos");
                 // Aguarda 1 hora em caso de erro antes de tentar novamente
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
         }
     }
 
-    private async Task RefreshMaterializedView(CancellationToken stoppingToken)
+    private async Task<DateTime> GetLastSyncDate()
     {
-        const int maxRetries = 3;
-        var currentTry = 0;
-        var baseDelay = TimeSpan.FromSeconds(5);
-
-        while (currentTry < maxRetries)
-        {
-            try
-            {
-                await using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync(stoppingToken);
-
-                // Define um timeout maior para o comando
-                await using var cmd = new NpgsqlCommand
-                {
-                    Connection = connection,
-                    CommandText = "REFRESH MATERIALIZED VIEW dev.videos_com_miniaturas_normal",
-                    CommandTimeout = 3600 // 1 hora
-                };
-
-                _logger.LogInformation("Iniciando atualização da materialized view (tentativa {Attempt}/{MaxRetries})",
-                    currentTry + 1, maxRetries);
-
-                await cmd.ExecuteNonQueryAsync(stoppingToken);
-                _logger.LogInformation("Materialized view atualizada com sucesso");
-                return;
-            }
-            catch (Exception ex) when (ex is PostgresException || ex is OperationCanceledException)
-            {
-                currentTry++;
-                if (currentTry >= maxRetries)
-                {
-                    _logger.LogError(ex,
-                        "Falha ao atualizar materialized view após {Retries} tentativas",
-                        maxRetries);
-                    throw;
-                }
-
-                var delay = baseDelay * (1 << currentTry); // Exponential backoff
-                _logger.LogWarning(ex,
-                    "Erro ao atualizar materialized view (tentativa {Attempt}/{MaxRetries}). Tentando novamente em {Delay} segundos",
-                    currentTry,
-                    maxRetries,
-                    delay.TotalSeconds);
-
-                try
-                {
-                    await Task.Delay(delay, stoppingToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogInformation("Atualização da materialized view cancelada pelo usuário");
-                    throw;
-                }
-            }
-        }
+        using var connection = new NpgsqlConnection(_connectionString);
+        const string sql = @"
+            SELECT COALESCE(MAX(data_adicionada), '0001-01-01'::timestamp) 
+            FROM dev.videos";
+        
+        return await connection.QuerySingleAsync<DateTime>(sql);
     }
-
-    private async Task SyncVideos()
+    
+    private async Task SyncVideos(DateTime lastSyncDate)
     {
         int currentPage = 1;
         bool shouldContinue = true;
@@ -127,7 +78,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
                 break;
             }
             
-            shouldContinue = await ProcessVideos(videos, currentPage);
+            shouldContinue = await ProcessVideos(videos, lastSyncDate, currentPage);
             
             if (shouldContinue)
             {
@@ -145,15 +96,16 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
             var response = await _httpClient.GetAsync($"{API_URL}{page}");
             response.EnsureSuccessStatusCode();
             
-            var result = await response.Content.ReadFromJsonAsync<VideoHomeEporn>();
+            var result = await response.Content.ReadFromJsonAsync<VideosHome>();
             
-            if (result?.videos.Count == 0)
+            if (result?.Videos?.Count == 0 && result?.Count > 0)
             {
-                _logger.LogInformation("Fim da paginação detectado. Count: {Count}", result.count);
+                _logger.LogInformation("Fim da paginação detectado. Count: {Count}", result.Count);
                 return null;
             }
 
-            return result.MapToVideosHome();
+            return result;
+            
         }
         catch (Exception ex)
         {
@@ -162,7 +114,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         }
     }
 
-    private async Task<bool> ProcessVideos(VideosHome videosHome, int currentPage)
+    private async Task<bool> ProcessVideos(VideosHome videosHome, DateTime lastSyncDate, int currentPage)
     {
         if (videosHome == null || videosHome.Videos == null || !videosHome.Videos.Any())
         {
@@ -173,11 +125,13 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         int monitorId = await InserirMonitoramentoCarga(currentPage);
         int videosProcessados = 0;
         int videosNovos = 0;
+        int videosAtualizados = 0;
         int erros = 0;
         string mensagemErro = null;
 
         using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
+        bool shouldContinue = true;
 
         try
         {
@@ -187,23 +141,34 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
                 try
                 {
                     var video = videoItem.Video.MapperToModel();
-                    video.SiteId = 2;
+                    video.SiteId = 1;
                     
+                    if (video.DataAdicionada <= lastSyncDate)
+                    {
+                        _logger.LogInformation("Encontrado vídeo mais antigo que a última sincronização: {VideoId}", video.Id);
+                        shouldContinue = false;
+                        break;
+                    }
+
                     transaction = await connection.BeginTransactionAsync();
 
-                    if (!await VideoExists(connection, video.Id))
+                    if (await VideoExists(connection, video.Id))
+                    {
+                        await UpdateVideo(connection, video);
+                        videosAtualizados++;
+                    }
+                    else
                     {
                         await InsertVideo(connection, video);
-                        await InsertThumbnails(connection, video.Id, video.Miniaturas);
-                        await InsertTerms(connection, video.Id, video.Termos);
                         videosNovos++;
-
-                        _atualizaView = true;
                     }
+
+                    await UpdateThumbnails(connection, video.Id, video.Miniaturas);
+                    //await UpdateTerms(connection, video.Id, video.Termos);
 
                     await transaction.CommitAsync();
                     videosProcessados++;
-                    Console.WriteLine($"Página: {currentPage} - Video: {videosProcessados}");
+                    _logger.LogInformation($"PH  --->  Página: {currentPage} - Video: {videosProcessados}");
                 }
                 catch (Exception ex)
                 {
@@ -233,11 +198,11 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         finally
         {
             await AtualizarMonitoramentoCarga(monitorId, videosProcessados, videosNovos,
-                0, erros, mensagemErro);
+                videosAtualizados, erros, mensagemErro);
             await AtualizarMetricasSync();
         }
 
-        return true; // Continua sempre buscando novas páginas
+        return shouldContinue;
     }
 
     private async Task<bool> VideoExists(NpgsqlConnection connection, string videoId)
@@ -247,23 +212,51 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         return count > 0;
     }
 
-    private async Task InsertVideo(NpgsqlConnection connection, paraiso.models.Video video)
+    private async Task UpdateVideo(NpgsqlConnection connection, paraiso.models.Video video)
     {
-        const string sql = @" 
-            INSERT INTO dev.videos 
-            (id, titulo, visualizacoes, avaliacao, url, data_adicionada, 
-             duracao_segundos, duracao_minutos, embed, site_id, 
-             default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src)
-            VALUES 
-            (@Id, @Titulo, @Visualizacoes, @Avaliacao, @Url, @DataAdicionada, 
-             @DuracaoSegundos, @DuracaoMinutos, @Embed, @SiteId, 
-             @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc)";
+        const string sql = @"
+            UPDATE dev.videos 
+            SET titulo = @Titulo, 
+                visualizacoes = @Visualizacoes, 
+                avaliacao = @Avaliacao, 
+                url = @Url, 
+                data_adicionada = @DataAdicionada, 
+                duracao_segundos = @DuracaoSegundos, 
+                duracao_minutos = @DuracaoMinutos, 
+                embed = @Embed, 
+                site_id = @SiteId, 
+                default_thumb_size = @DefaultThumbSize, 
+                default_thumb_width = @DefaultThumbWidth, 
+                default_thumb_height = @DefaultThumbHeight, 
+                default_thumb_src = @DefaultThumbSrc, 
+                tags = @Tags
+            WHERE id = @Id";
             
         await connection.ExecuteAsync(sql, video);
     }
 
-    private async Task InsertThumbnails(NpgsqlConnection connection, string videoId, List<Miniatura> thumbnails)
+    private async Task InsertVideo(NpgsqlConnection connection, paraiso.models.Video video)
     {
+        const string sql = @"
+            INSERT INTO dev.videos 
+            (id, titulo, visualizacoes, avaliacao, url, data_adicionada, 
+             duracao_segundos, duracao_minutos, embed, site_id, 
+             default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src, tags)
+            VALUES 
+            (@Id, @Titulo, @Visualizacoes, @Avaliacao, @Url, @DataAdicionada, 
+             @DuracaoSegundos, @DuracaoMinutos, @Embed, @SiteId, 
+             @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc, @Tags)";
+            
+        await connection.ExecuteAsync(sql, video);
+    }
+
+    private async Task UpdateThumbnails(NpgsqlConnection connection, string videoId, List<Miniatura> thumbnails)
+    {
+        // Remove miniaturas existentes
+        const string deleteSql = "DELETE FROM dev.miniaturas WHERE video_id = @VideoId";
+        await connection.ExecuteAsync(deleteSql, new { VideoId = videoId });
+
+        // Insere novas miniaturas
         const string insertSql = @"
             INSERT INTO dev.miniaturas (video_id, tamanho, largura, altura, src, padrao)
             VALUES (@VideoId, @Tamanho, @Largura, @Altura, @Src, @Padrao)";
@@ -271,41 +264,59 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         await connection.ExecuteAsync(insertSql, thumbnails);
     }
 
-    private async Task InsertTerms(NpgsqlConnection connection, string videoId, List<Termo> terms)
+    private async Task UpdateTerms(NpgsqlConnection connection, string videoId, List<Termo> terms)
     {
         if (terms == null || !terms.Any())
             return;
 
-        // Insere novos termos em batch
-        const string insertTermsSql = @"
+        // Remove associações existentes primeiro
+        const string deleteVideoTermsSql = "DELETE FROM dev.video_termos WHERE video_id = @VideoId";
+        await connection.ExecuteAsync(deleteVideoTermsSql, new { VideoId = videoId });
+
+        // Pega todos os termos existentes de uma vez para evitar múltiplas queries
+        const string getExistingTermsSql = @"
+        SELECT id, termo 
+        FROM dev.termos 
+        WHERE termo = ANY(@Termos)";
+
+        var termosArray = terms.Select(t => t.termo).ToArray();
+        var existingTerms =
+            (await connection.QueryAsync<(int id, string termo)>(getExistingTermsSql, new { Termos = termosArray }))
+            .ToDictionary(t => t.termo, t => t.id);
+
+        // Identifica termos que precisam ser inseridos
+        var newTerms = terms.Where(t => !existingTerms.ContainsKey(t.termo))
+            .Select(t => t.termo)
+            .ToList();
+
+        if (newTerms.Any())
+        {
+            // Insere novos termos em batch
+            const string insertTermsSql = @"
             INSERT INTO dev.termos (termo)
             SELECT unnest(@Termos)
             ON CONFLICT (termo) DO NOTHING
             RETURNING id, termo";
 
-        var termosArray = terms.Select(t => t.termo).ToArray();
-        var insertedTerms = await connection.QueryAsync<(int id, string termo)>(insertTermsSql, new { Termos = termosArray });
-        
-        // Pega os IDs dos termos que já existiam
-        const string getExistingTermsSql = @"
-            SELECT id, termo 
-            FROM dev.termos 
-            WHERE termo = ANY(@Termos)";
-
-        var existingTerms = (await connection.QueryAsync<(int id, string termo)>(getExistingTermsSql, new { Termos = termosArray }))
-            .ToDictionary(t => t.termo, t => t.id);
+            var insertedTerms =
+                await connection.QueryAsync<(int id, string termo)>(insertTermsSql, new { Termos = newTerms });
+            foreach (var term in insertedTerms)
+            {
+                existingTerms[term.termo] = term.id;
+            }
+        }
 
         // Prepara as associações vídeo-termo
         var videoTerms = terms.Select(t => new
         {
             VideoId = videoId,
             TermoId = existingTerms[t.termo]
-        }).Distinct().ToList();
+        }).ToList();
 
         // Insere todas as associações de uma vez
         const string videoTermSql = @"
-            INSERT INTO dev.video_termos (video_id, termo_id)
-            SELECT unnest(@VideoIds), unnest(@TermoIds)";
+        INSERT INTO dev.video_termos (video_id, termo_id)
+        SELECT unnest(@VideoIds), unnest(@TermoIds)";
 
         await connection.ExecuteAsync(videoTermSql, new
         {
@@ -321,7 +332,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
             INSERT INTO dev.monitor_carga_videos 
                 (pagina, data_inicio, status, quem)
             VALUES 
-                (@Pagina, @DataInicio, @Status, 'worker-inserir')
+                (@Pagina, @DataInicio, @Status, 'worker-1x')
             RETURNING id";
 
         return await connection.QuerySingleAsync<int>(sql, new

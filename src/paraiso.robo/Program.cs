@@ -28,32 +28,28 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "VideoCache_";
 });
 
-//robo eporner
 /*
-builder.Services.AddHostedService<RoboInsereVideosSeNaoExistirEporner>();
-
-builder.Services.AddHostedService<RoboPalavrasProibidas>();
-
-
-
-// Robo: DeletedVideos
-builder.Services.AddHostedService<RoboDeletaVideos>();
-
 // Robo: AtualizaCategorias
 builder.Services.AddHostedService<RoboAtualizaCategorias>();
 
 // Robo: AtualizaVideos
 builder.Services.AddHostedService<RoboInsereVideosSeNaoExistir>();
-
-// Robo: AtualizaBaseInteira - julgo nao ser necessário esse robo por hora
-// builder.Services.AddHostedService<RoboAtualizaBaseInteira>();
 */
 
+/******************************************/
 // Robo: AtualizaCache
 builder.Services.AddSingleton<ServiceAtualizaCache>(); //trabalham juntos
 builder.Services.AddHostedService<RoboAtualizaCache>();
 
+// Robo: Atualiza Videos por Palavras
+builder.Services.AddHostedService<RoboPalavrasProibidas>();
 
+// Robo: DeletedVideos
+builder.Services.AddHostedService<RoboDeletaVideos>();
+
+/** para quando for atualizar e rodar a base inteira, com insert e update de videos**/ 
+//builder.Services.AddHostedService<RoboAtualizaBaseInteira2>();
+//builder.Services.AddHostedService<RoboInsereVideosSeNaoExistirEpornerBaseInteira>();
 
 var host = builder.Build();
 host.Run();

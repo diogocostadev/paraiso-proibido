@@ -173,6 +173,13 @@ public class RoboDeletaVideos : BackgroundService
                     // Atualiza o status do vídeo para inativo
                     var updated = await UpdateVideoStatus(connection, video.VideoId, transaction);
                     hasUpdates = hasUpdates || updated;
+                    
+                    if (updated)
+                        _logger.LogInformation($"Video {video.VideoId} atualizado com sucesso");
+                    else
+                    {       
+                        _logger.LogWarning($"Video {video.VideoId} não foi atualizado");
+                    }
                 }
             }
 
