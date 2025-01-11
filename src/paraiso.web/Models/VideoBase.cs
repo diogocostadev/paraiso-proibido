@@ -19,6 +19,7 @@ public class VideoBase
     public List<Miniaturas> Miniaturas { get; set; } = new List<Miniaturas>();
     
     public List<Termos> Termos { get; set; }
+    public List<string> Tags { get; set; } = new List<string>();
     
     public List<VideoBase> VideosRelacionados { get; set; } = new List<VideoBase>();
     

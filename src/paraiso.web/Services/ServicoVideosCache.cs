@@ -691,10 +691,23 @@ AND (
         {
             string chaveCache = $"video_{id}";
             var dadosCache = await _cache.GetAsync(chaveCache);
+           
             if (dadosCache != null)
             {
                 var dadosDescomprimidos = _usarCompressao ? DescomprimirDados(dadosCache) : dadosCache;
-                return JsonSerializer.Deserialize<VideoBase>(Encoding.UTF8.GetString(dadosDescomprimidos));
+                
+                var vd = JsonSerializer.Deserialize<VideoBase>(Encoding.UTF8.GetString(dadosDescomprimidos));
+
+                if (vd?.Tags.Count > 0 && vd.VideosRelacionados.Count > 0)
+                {
+                    var x = vd.Tags.FirstOrDefault(o => o.Trim().Length == 0);
+                    if (x != null)
+                    {
+                        vd.Tags.Remove(x);
+                    }
+
+                    return vd;
+                }
             }
 
             return await _circuitBreaker.ExecuteAsync(async () =>
@@ -709,15 +722,13 @@ AND (
 
                 if (video == null) return null;
 
-                video.Termos = await ObterTermosComNovaConexaoAsync(id, cancellationToken);
-
                 try
                 {
                     // Agora obtém os vídeos relacionados usando os termos já carregados
                     await using (var conexao = new NpgsqlConnection(_stringConexao))
                     {
                         await conexao.OpenAsync(cancellationToken);
-                        video.VideosRelacionados = await ObterVideosRelacionadosAsync(conexao, id, video.Termos, cancellationToken); 
+                        video.VideosRelacionados = await ObterVideosRelacionadosAsync(conexao, id, video.Tags, cancellationToken); 
                     }
                 }
                 catch (Exception e)
@@ -741,7 +752,7 @@ AND (
         await conexao.OpenAsync(cancellationToken);
         return await ObterTermosAsync(conexao, id, cancellationToken);
     }
-    private async Task<VideoBase> ObterDadosBasicosVideoAsync(NpgsqlConnection conexao, string id, CancellationToken cancellationToken)
+    private async Task<VideoBase?> ObterDadosBasicosVideoAsync(NpgsqlConnection conexao, string id, CancellationToken cancellationToken)
     {
         using var cmd = new NpgsqlCommand(Queries.VideoBase, conexao);
         cmd.Parameters.AddWithValue("@Id", id);
@@ -758,7 +769,9 @@ AND (
             Embed = reader.GetString(3),
             DefaultThumbSize = reader.GetString(4),
             DefaultThumbSrc = reader.GetString(5),
-            DuracaoMinutos = reader.GetString(6)
+            DuracaoMinutos = reader.GetString(6), 
+            Tags = reader.IsDBNull(7) ? new List<string>() :   
+                reader.GetString(7).Split(',').ToList(),
         };
     }
     private async Task<List<Termos>> ObterTermosAsync(NpgsqlConnection conexao, string id, CancellationToken cancellationToken)
@@ -780,29 +793,24 @@ AND (
 
         return termos;
     }
-    private async Task<List<VideoBase>> ObterVideosRelacionadosAsync(NpgsqlConnection conexao, string id, List<Termos> termos, CancellationToken cancellationToken)
+    private async Task<List<VideoBase>> ObterVideosRelacionadosAsync(NpgsqlConnection conexao, string id, List<string> termos, CancellationToken cancellationToken)
     {
         if (!termos.Any())
             return new List<VideoBase>();
 
-        string query = @"SELECT vi.*
-                    FROM videos.dev.videos_com_miniaturas_normal vi
-                    INNER JOIN (
-                        SELECT DISTINCT v.id
-                        FROM videos.dev.video_termos vt
-                        INNER JOIN videos.dev.videos_com_miniaturas_normal v ON v.id = vt.video_id
-                        INNER JOIN videos.dev.video_termos vt2 ON vt2.video_id = v.id
-                        WHERE vt2.termo_id = @TermoId AND v.id != @Id
-                        LIMIT 12
-                    ) vr ON vr.id = vi.id
-                    ORDER BY vi.data_adicionada DESC";
+        string primeiraTag = termos.First();
+        
+        string query = $@"SELECT vi.*
+                            FROM videos.dev.videos_com_miniaturas_normal vi 
+                            where vi.tags like @primeiraTag and vi.id != @id
+                            ORDER BY vi.data_adicionada DESC
+                            LIMIT 12";
         
         // 1. Obter vídeos relacionados usando os termos já carregados
         var videosRelacionados = new List<VideoBase>();
         using (var cmd = new NpgsqlCommand(query, conexao))
         {
-            var termoIds = termos.Select(t => t.Id).ToArray();
-            cmd.Parameters.AddWithValue("@TermoId", termoIds.FirstOrDefault());
+            cmd.Parameters.AddWithValue("@primeiraTag", $"%{primeiraTag}%");
             cmd.Parameters.AddWithValue("@Id", id);
 
             using var leitor = await cmd.ExecuteReaderAsync(cancellationToken);
@@ -837,7 +845,7 @@ AND (
         public const string VideoBase = @"
             SELECT 
                 id, titulo, duracao_segundos, embed,
-                default_thumb_size, default_thumb_src, duracao_minutos
+                default_thumb_size, default_thumb_src, duracao_minutos, tags
             FROM videos.dev.videos 
             WHERE id = @Id";
 

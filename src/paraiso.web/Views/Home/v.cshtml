@@ -21,11 +21,11 @@
         
         @* Tags Section *@
         <div class="tags-section">
-            @if (Model.Termos.Any())
+            @if (Model.Tags.Any())
             {
-                foreach (var tag in Model.Termos)
+                foreach (var tag in Model.Tags)
                 {
-                    <a asp-controller="Home" asp-action="Index" asp-route-b="@tag.termo" class="video-tag">@tag.termo</a>
+                    <a asp-controller="Home" asp-action="Index" asp-route-b="@tag.Trim()" class="video-tag">@tag</a>
                 }
             }
         </div>
