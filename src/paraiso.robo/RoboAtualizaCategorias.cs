@@ -332,7 +332,8 @@ public class RoboAtualizaCategorias : BackgroundService
                 try
                 {
                     var video = videoItem.Video.MapperToModel();
-
+                    video.SiteId = 1;
+                    
                     // Verifica se o vídeo já existe
                     bool videoExists = await VideoExists(connection, video.Id, transaction);
 
@@ -524,11 +525,11 @@ public class RoboAtualizaCategorias : BackgroundService
         INSERT INTO dev.videos 
         (id, titulo, visualizacoes, avaliacao, url, data_adicionada, 
          duracao_segundos, duracao_minutos, embed, site_id, 
-         default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src)
+         default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src, tags)
         VALUES 
         (@Id, @Titulo, @Visualizacoes, @Avaliacao, @Url, @DataAdicionada, 
          @DuracaoSegundos, @DuracaoMinutos, @Embed, @SiteId, 
-         @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc)";
+         @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc, @Tags)";
 
         await connection.ExecuteAsync(
             new CommandDefinition(

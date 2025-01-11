@@ -51,6 +51,8 @@ public class RoboInsereVideosSeNaoExistirEpornerBaseInteira : BackgroundService
                 // Aguarda 1 hora em caso de erro antes de tentar novamente
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
+            
+            break;
         }
     }
 

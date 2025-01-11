@@ -138,7 +138,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
         }
     }
 
-    private async Task<VideosHome> FetchVideosFromApi(int page)
+    private async Task<VideosHome?> FetchVideosFromApi(int page)
     {
         try
         {
@@ -153,7 +153,7 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
                 return null;
             }
 
-            return result.MapToVideosHome();
+            return result?.MapToVideosHome();
         }
         catch (Exception ex)
         {
@@ -249,15 +249,15 @@ public class RoboInsereVideosSeNaoExistirEporner : BackgroundService
 
     private async Task InsertVideo(NpgsqlConnection connection, paraiso.models.Video video)
     {
-        const string sql = @" 
+        const string sql = @"
             INSERT INTO dev.videos 
             (id, titulo, visualizacoes, avaliacao, url, data_adicionada, 
              duracao_segundos, duracao_minutos, embed, site_id, 
-             default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src)
+             default_thumb_size, default_thumb_width, default_thumb_height, default_thumb_src, tags)
             VALUES 
             (@Id, @Titulo, @Visualizacoes, @Avaliacao, @Url, @DataAdicionada, 
              @DuracaoSegundos, @DuracaoMinutos, @Embed, @SiteId, 
-             @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc)";
+             @DefaultThumbSize, @DefaultThumbWidth, @DefaultThumbHeight, @DefaultThumbSrc, @Tags)";
             
         await connection.ExecuteAsync(sql, video);
     }
