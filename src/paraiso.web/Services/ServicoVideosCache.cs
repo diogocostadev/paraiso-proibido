@@ -6,7 +6,6 @@ using System.IO.Compression;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
-using NpgsqlTypes;
 using paraiso.web.Models;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
